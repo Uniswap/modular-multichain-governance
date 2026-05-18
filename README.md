@@ -34,6 +34,7 @@ config:
 ---
 flowchart LR
     subgraph Ethereum
+        direction LR
         BR(Bridge Registry):::eth
 
         WH(Wormhole):::eth
@@ -76,9 +77,6 @@ always, the same `Encoder` logic can be re-used for the same bridge targeting di
 config:
     theme: dark
     layout: elk
-    elk:
-        nodePlacementStrategy: "NETWORK_SIMPLEX"
-
 ---
 flowchart LR
     subgraph Polygon
