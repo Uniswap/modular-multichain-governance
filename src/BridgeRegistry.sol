@@ -7,15 +7,15 @@ contract BridgeRegistry is Owned(msg.sender) {
     address public senderHub;
     mapping(bytes32 => address) public receiverHubs;
 
-    mapping(bytes32 => string) public getName;
-    mapping(string => bytes32) public getId;
+    mapping(bytes32 => string) public bridgeName;
+    mapping(string => bytes32) public bridgeId;
 
     function setSenderHub(address newSenderHub) external onlyOwner {
         senderHub = newSenderHub;
     }
 
-    function setReceiverHub(bytes32 bridgeId, address receiverHub) external onlyOwner {
-        receiverHubs[bridgeId] = receiverHub;
+    function setReceiverHub(bytes32 id, address receiverHub) external onlyOwner {
+        receiverHubs[id] = receiverHub;
     }
 
     /// @notice Registers bridge Id's and names for easy two-way lookup.
@@ -24,11 +24,11 @@ contract BridgeRegistry is Owned(msg.sender) {
     /// @param names Bridge names to set.
     function setBridgeIds(string[] calldata names) external onlyOwner {
         for (uint256 i; i < names.length; i++) {
-            string calldata bridgeName = names[i];
-            bytes32 bridgeId = keccak256(bytes(bridgeName));
+            string calldata name = names[i];
+            bytes32 id = keccak256(bytes(name));
 
-            getName[bridgeId] = bridgeName;
-            getId[bridgeName] = bridgeId;
+            bridgeName[id] = name;
+            bridgeId[name] = id;
         }
     }
 
@@ -36,11 +36,11 @@ contract BridgeRegistry is Owned(msg.sender) {
     /// @param names Bridge names to unset.
     function unsetBridgeIds(string[] calldata names) external onlyOwner {
         for (uint256 i; i < names.length; i++) {
-            string calldata bridgeName = names[i];
-            bytes32 bridgeId = keccak256(bytes(bridgeName));
+            string calldata name = names[i];
+            bytes32 id = keccak256(bytes(name));
 
-            delete getName[bridgeId];
-            delete getId[bridgeName];
+            delete bridgeName[id];
+            delete bridgeId[name];
         }
     }
 }

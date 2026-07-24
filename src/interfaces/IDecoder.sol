@@ -2,8 +2,7 @@
 pragma solidity 0.8.34;
 
 import {Call} from "src/types/Call.sol";
-import {MessageType} from "src/types/MessageType.sol";
 
 interface IDecoder {
-    function decode(address bridge, bytes calldata data) external returns (MessageType, Call[] memory);
+    function decode(address caller, bytes calldata data) external returns (Call[] memory);
 }

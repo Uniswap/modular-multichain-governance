@@ -4,17 +4,24 @@ pragma solidity 0.8.34;
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IEncoder} from "src/interfaces/IEncoder.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
+import {EncoderSet} from "src/types/EncoderSet.sol";
 
 contract SenderHub is Owned(msg.sender) {
-    event EncoderSet(uint256 indexed chainId, bytes32 indexed bridgeId, address indexed module);
-    event ActionSent(uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 hash);
+    event SetEncoder(uint256 indexed chainId, bytes32 indexed bridgeId, address indexed module);
+    event SendMultichainAction(uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 hash);
 
     mapping(uint256 chainId => mapping(bytes32 bridgeId => address)) encoders;
 
-    function setEncoder(uint256 chainId, bytes32 bridgeId, address encoder) external onlyOwner {
-        encoders[chainId][bridgeId] = encoder;
+    function setEncoders(EncoderSet[] memory encoderSets) external onlyOwner {
+        for (uint256 i; i < encoderSets.length; i++) {
+            uint256 chainId = encoderSets[i].chainId;
+            bytes32 bridgeId = encoderSets[i].bridgeId;
+            address encoder = encoderSets[i].encoder;
 
-        emit EncoderSet(chainId, bridgeId, encoder);
+            encoders[chainId][bridgeId] = encoder;
+
+            emit SetEncoder(chainId, bridgeId, encoder);
+        }
     }
 
     function sendMultichainActions(MultichainAction[] calldata actions) external onlyOwner {
@@ -33,7 +40,7 @@ contract SenderHub is Owned(msg.sender) {
 
             require(success);
 
-            emit ActionSent(chainId, bridge, encoder, hash);
+            emit SendMultichainAction(chainId, bridge, encoder, hash);
         }
     }
 }

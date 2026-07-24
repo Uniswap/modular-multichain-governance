@@ -3,68 +3,39 @@ pragma solidity 0.8.34;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {Call} from "src/types/Call.sol";
-import {MessageType} from "src/types/MessageType.sol";
 import {IDecoder} from "src/interfaces/IDecoder.sol";
-import {IGuard} from "src/interfaces/IGuard.sol";
 
 contract ReceiverHub is Owned(msg.sender) {
-    event DecoderRegistered(address indexed decoder, address indexed module);
-    event Veto(bytes32 indexed vetoedHash, address indexed bridge, address indexed decoder);
-    event CallsReceived(bytes32 indexed hash, address indexed bridge, address indexed decoder, uint256 value);
+    event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
+    event CallsReceived(address indexed bridge, address indexed decoder, bytes32 indexed callsHash);
 
-    address public guard;
-    mapping(address bridge => address) public decoders;
+    mapping(bytes4 selector => address) public decoders;
 
-    Call[] public nextCalls;
-    bytes32 public nextCallsHash;
+    function setDecoder(bytes4 selector, address decoder) external onlyOwner {
+        decoders[selector] = decoder;
 
-    function setGuard(address newGuard) external onlyOwner {
-        guard = newGuard;
+        emit DecoderRegistered(selector, decoder);
     }
 
-    function setDecoder(address bridge, address decoder) external onlyOwner {
-        decoders[bridge] = decoder;
-    }
+    fallback() external payable {
+        address decoder = decoders[msg.sig];
+        require(address(decoder) != address(0x00));
 
-    function runCalls() external {
-        IGuard(guard).authorizeCalls(nextCallsHash);
+        Call[] memory calls = IDecoder(decoder).decode(msg.sender, msg.data);
 
-        uint256 length = nextCalls.length;
+        bytes32 callsHash = keccak256(abi.encode(calls));
 
-        for (uint256 i; i < length; i++) {
-            address target = nextCalls[i].target;
-            uint256 value = nextCalls[i].value;
-            bytes memory data = nextCalls[i].data;
+        for (uint256 i; i < calls.length; i++) {
+            address target = calls[i].target;
+            uint256 value = calls[i].value;
+            bytes memory data = calls[i].data;
 
             (bool success, ) = target.call{value: value}(data);
 
             require(success);
         }
-    }
 
-    fallback() external payable {
-        address decoder = decoders[msg.sender];
-        require(address(decoder) != address(0x00));
-
-        (MessageType messageType, Call[] memory calls) = IDecoder(decoder).decode(msg.sender, msg.data);
-        bytes32 hash = keccak256(abi.encode(calls));
-
-        if (messageType == MessageType.Veto) {
-            bytes32 vetoedHash = nextCallsHash;
-
-            delete nextCalls;
-            delete nextCallsHash;
-
-            emit Veto(vetoedHash, msg.sender, decoder);
-
-        } else if (messageType == MessageType.Multicall) {
-            IGuard(guard).commitCalls(msg.sender, calls);
-
-            nextCalls = calls;
-            nextCallsHash = hash;
-
-            emit CallsReceived(hash, msg.sender, decoder, msg.value);
-        }
+        emit CallsReceived(msg.sender, decoder, callsHash);
     }
 
     receive() external payable {}

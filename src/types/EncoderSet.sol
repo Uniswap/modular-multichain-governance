@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.34;
 
-import {Call} from "src/types/Call.sol";
-
-struct MultichainAction {
+struct EncoderSet {
     uint256 chainId;
     bytes32 bridgeId;
-    Call[] calls;
+    address encoder;
 }
