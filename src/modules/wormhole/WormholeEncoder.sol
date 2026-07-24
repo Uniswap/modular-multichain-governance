@@ -3,10 +3,10 @@ pragma solidity 0.8.34;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IEncoder} from "src/interfaces/IEncoder.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
-import {Call} from "src/types/Call.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
+import {IEncoder} from "src/interfaces/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface IWormhole {
     function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
@@ -35,7 +35,10 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
         toWormholeChainId[realChainId] = wormholeChainId;
     }
 
-    function encode(MultichainAction calldata multichainAction) public returns (address, uint256, bytes memory) {
+    function encode(MultichainAction calldata multichainAction)
+        public
+        returns (address, uint256, bytes memory)
+    {
         uint256 messageFee = IWormhole(WORMHOLE).messageFee();
 
         uint256 value = 0;
@@ -55,8 +58,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
                     abi.encodeCall(
                         IBridgeCalls.wormholeCall,
                         abi.encode(
-                        toWormholeChainId[multichainAction.chainId],
-                        multichainAction.calls
+                            toWormholeChainId[multichainAction.chainId], multichainAction.calls
                         )
                     ),
                     CONSISTENCY_LEVEL

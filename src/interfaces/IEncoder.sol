@@ -4,5 +4,7 @@ pragma solidity 0.8.34;
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface IEncoder {
-    function encode(MultichainAction calldata multichainAction) external returns (address, uint256, bytes memory);
+    function encode(MultichainAction calldata multichainAction)
+        external
+        returns (address, uint256, bytes memory);
 }

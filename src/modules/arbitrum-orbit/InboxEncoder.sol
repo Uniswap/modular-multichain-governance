@@ -2,12 +2,12 @@
 pragma solidity 0.8.34;
 
 // import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IEncoder} from "src/interfaces/IEncoder.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
-import {Call} from "src/types/Call.sol";
 import {Constants} from "./Constants.sol";
+import {BridgeRegistry} from "src/BridgeRegistry.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
+import {IEncoder} from "src/interfaces/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface IInbox {
     function createRetryableTicket(
@@ -44,7 +44,11 @@ contract InboxEncoder is IEncoder {
         gasConfig = config;
     }
 
-    function encode(MultichainAction calldata multichainAction) public view returns (address, uint256, bytes memory) {
+    function encode(MultichainAction calldata multichainAction)
+        public
+        view
+        returns (address, uint256, bytes memory)
+    {
         address inbox = arbitrumOrbitInbox[multichainAction.chainId];
 
         address target = BridgeRegistry(BRIDGE_REGISTRY).receiverHubs(multichainAction.bridgeId);

@@ -3,12 +3,14 @@ pragma solidity 0.8.34;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IEncoder} from "src/interfaces/IEncoder.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
 import {EncoderSet} from "src/types/EncoderSet.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
 
 contract SenderHub is Owned(msg.sender) {
     event SetEncoder(uint256 indexed chainId, bytes32 indexed bridgeId, address indexed module);
-    event SendMultichainAction(uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 hash);
+    event SendMultichainAction(
+        uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 hash
+    );
 
     mapping(uint256 chainId => mapping(bytes32 bridgeId => address)) encoders;
 
@@ -34,7 +36,8 @@ contract SenderHub is Owned(msg.sender) {
 
             require(encoder != address(0x00));
 
-            (address bridge, uint256 value, bytes memory data) = IEncoder(encoder).encode(actions[i]);
+            (address bridge, uint256 value, bytes memory data) =
+                IEncoder(encoder).encode(actions[i]);
 
             (bool success,) = bridge.call{value: value}(data);
 

@@ -2,8 +2,8 @@
 pragma solidity 0.8.34;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {Call} from "src/types/Call.sol";
 import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {Call} from "src/types/Call.sol";
 
 contract ReceiverHub is Owned(msg.sender) {
     event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
@@ -30,7 +30,7 @@ contract ReceiverHub is Owned(msg.sender) {
             uint256 value = calls[i].value;
             bytes memory data = calls[i].data;
 
-            (bool success, ) = target.call{value: value}(data);
+            (bool success,) = target.call{value: value}(data);
 
             require(success);
         }

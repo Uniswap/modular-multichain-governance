@@ -9,5 +9,6 @@ interface IBridgeCalls {
     /// @dev Arbitrum Orbit
     function arbitrumCall(Call[] memory calls) external;
     /// @dev Polygon Fx
-    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
+    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data)
+        external;
 }

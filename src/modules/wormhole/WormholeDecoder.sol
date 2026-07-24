@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.34;
 
+import {Errors} from "./Errors.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
-import {Call} from "src/types/Call.sol";
-import {Errors} from "./Errors.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
+import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {Call} from "src/types/Call.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
 
 struct VerifiableMessage {
     uint8 version;
@@ -59,22 +59,18 @@ contract WormholeDecoder is IDecoder {
         require(msg.sender == RECEIVER_HUB, Errors.CallerNotReceiverHub());
         require(getSelector(data) == IBridgeCalls.wormholeCall.selector, Errors.InvalidSelector());
 
-        (
-            VerifiableMessage memory vm,
-            bool valid,
-            string memory reason
-        ) = IWormhole(WORMHOLE).parseAndVerifyVM(getWormholeMessage(data));
+        (VerifiableMessage memory vm, bool valid, string memory reason) =
+            IWormhole(WORMHOLE).parseAndVerifyVM(getWormholeMessage(data));
 
         require(valid, Errors.WormholeParseVerifyVM(reason));
-        require(SENDER_HUB == address(uint160(uint256(vm.emitterAddress))), Errors.NotFromSenderHub());
+        require(
+            SENDER_HUB == address(uint160(uint256(vm.emitterAddress))), Errors.NotFromSenderHub()
+        );
         require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, Errors.NotFromEthereum());
         require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, Errors.Expired());
         require(vm.sequence >= minimumNonce, Errors.InvalidNonce());
 
-        (
-            uint16 receiverChainId,
-            Call[] memory calls
-        ) = abi.decode(vm.payload, (uint16, Call[]));
+        (uint16 receiverChainId, Call[] memory calls) = abi.decode(vm.payload, (uint16, Call[]));
 
         require(receiverChainId == THIS_WORMHOLE_CHAIN_ID, Errors.NotToThisChain());
 

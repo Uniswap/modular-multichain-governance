@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.34;
 
+import {Constants} from "./Constants.sol";
+import {Errors} from "./Errors.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
-import {Call} from "src/types/Call.sol";
-import {Constants} from "./Constants.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {Errors} from "./Errors.sol";
+import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {Call} from "src/types/Call.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
 
 contract WormholeDecoder is IDecoder, Owned(msg.sender) {
     address public immutable SENDER_HUB;
@@ -43,7 +43,7 @@ contract WormholeDecoder is IDecoder, Owned(msg.sender) {
         assembly ("memory-safe") {
             let src := add(encodedCall.offset, 0x04)
             let length := sub(encodedCall.offset, 0x04)
-    
+
             data := mload(0x40)
 
             calldatacopy(src, data, length)
