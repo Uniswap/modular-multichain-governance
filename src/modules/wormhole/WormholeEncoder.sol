@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.34;
+pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
@@ -24,7 +24,6 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
 
     uint32 public nonce;
     mapping(uint256 chainId => uint16) public toWormholeChainId;
-    mapping(uint256 chainId => address) public messageReceivers;
 
     constructor(address wormhole, address bridgeRegistry) {
         WORMHOLE = wormhole;
