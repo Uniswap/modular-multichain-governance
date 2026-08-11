@@ -2,7 +2,6 @@
 pragma solidity 0.8.35;
 
 // import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {Constants} from "./Constants.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/IEncoder.sol";

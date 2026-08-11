@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {Errors} from "./Errors.sol";
+import {DecoderError, WormholeError} from "src/util/Errors.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {BridgeRegistry} from "src/BridgeRegistry.sol";
 import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
+import {CalldataHandler} from "src/util/CalldataHandler.sol";
 
 struct VerifiableMessage {
     uint8 version;
@@ -56,47 +57,30 @@ contract WormholeDecoder is IDecoder {
     }
 
     function decode(address, bytes calldata data) public returns (Call[] memory) {
-        require(msg.sender == RECEIVER_HUB, Errors.CallerNotReceiverHub());
-        require(getSelector(data) == IBridgeCalls.wormholeCall.selector, Errors.InvalidSelector());
+        require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
+
+        bytes4 selector = CalldataHandler.getSelector(data);
+        require(selector == IBridgeCalls.wormholeCall.selector, DecoderError.InvalidSelector());
+
+        bytes memory encodedWormholeMessage = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes memory wormholeMessage = abi.decode(encodedWormholeMessage, (bytes));
 
         (VerifiableMessage memory vm, bool valid, string memory reason) =
-            IWormhole(WORMHOLE).parseAndVerifyVM(getWormholeMessage(data));
+            IWormhole(WORMHOLE).parseAndVerifyVM(wormholeMessage);
 
-        require(valid, Errors.WormholeParseVerifyVM(reason));
+        require(valid, WormholeError.WormholeParseVerifyVM(reason));
         require(
-            SENDER_HUB == address(uint160(uint256(vm.emitterAddress))), Errors.NotFromSenderHub()
+            SENDER_HUB == address(uint160(uint256(vm.emitterAddress))), DecoderError.NotFromSenderHub()
         );
-        require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, Errors.NotFromEthereum());
-        require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, Errors.Expired());
-        require(vm.sequence >= minimumNonce, Errors.InvalidNonce());
+        require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, WormholeError.NotFromEthereum());
+        require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, WormholeError.Expired());
+        require(vm.sequence >= minimumNonce, WormholeError.InvalidNonce());
 
         (uint16 receiverChainId, Call[] memory calls) = abi.decode(vm.payload, (uint16, Call[]));
-
-        require(receiverChainId == THIS_WORMHOLE_CHAIN_ID, Errors.NotToThisChain());
+        require(receiverChainId == THIS_WORMHOLE_CHAIN_ID, WormholeError.NotToThisChain());
 
         minimumNonce = vm.sequence + 1;
 
         return calls;
-    }
-
-    function getSelector(bytes calldata encodedCall) internal pure returns (bytes4 selector) {
-        assembly ("memory-safe") {
-            selector := calldataload(encodedCall.offset)
-            selector := shl(0xe0, shr(0xe0, selector))
-        }
-    }
-
-    function getWormholeMessage(bytes calldata encodedCall) internal pure returns (bytes memory) {
-        bytes memory wormholeMessage = new bytes(0);
-
-        assembly ("memory-safe") {
-            let src := add(encodedCall.offset, 0x24)
-            let length := calldataload(src)
-            wormholeMessage := mload(0x40)
-            calldatacopy(src, wormholeMessage, length)
-            mstore(0x40, add(wormholeMessage, length))
-        }
-
-        return wormholeMessage;
     }
 }
