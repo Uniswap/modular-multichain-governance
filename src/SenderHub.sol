@@ -2,39 +2,49 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IEncoder} from "src/interfaces/IEncoder.sol";
-import {EncoderSet} from "src/types/EncoderSet.sol";
+import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
-contract SenderHub is Owned(msg.sender) {
-    event SetEncoder(uint256 indexed chainId, bytes32 indexed bridgeId, address indexed module);
-    event SendMultichainAction(
-        uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 hash
-    );
+contract SenderHub is Owned(msg.sender), ISenderHub {
+    event SetEncoder(uint256 indexed chainId, address indexed module);
+    event SendMultichainAction(uint256 indexed chainId, address indexed bridge, address indexed encoder);
+    event SetReceiverHub(uint256 indexed chainId, address indexed receiverHub);
 
-    mapping(uint256 chainId => mapping(bytes32 bridgeId => address)) encoders;
+    mapping(uint256 chainId => address) public encoders;
+    mapping(uint256 chainId => address) public receiverHubs;
 
-    function setEncoders(EncoderSet[] memory encoderSets) external onlyOwner {
-        for (uint256 i; i < encoderSets.length; i++) {
-            uint256 chainId = encoderSets[i].chainId;
-            bytes32 bridgeId = encoderSets[i].bridgeId;
-            address encoder = encoderSets[i].encoder;
+    function setEncoders(uint256[] calldata chainIds, address[] calldata encoderModules) external onlyOwner {
+        require(chainIds.length == encoderModules.length);
 
-            encoders[chainId][bridgeId] = encoder;
+        for (uint256 i; i < chainIds.length; i++) {
+            uint256 chainId = chainIds[i];
+            address encoder = encoderModules[i];
 
-            emit SetEncoder(chainId, bridgeId, encoder);
+            encoders[chainId] = encoder;
+
+            emit SetEncoder(chainId, encoder);
+        }    
+    }
+
+    function setReceiverHubs(uint256[] calldata chainIds, address[] calldata recvHubs) external onlyOwner {
+        require(chainIds.length == recvHubs.length);
+
+        for (uint256 i; i < chainIds.length; i++) {
+            uint256 chainId = chainIds[i];
+
+            address receiverHub = recvHubs[i];
+
+            receiverHubs[chainId] = receiverHub;
+
+            emit SetReceiverHub(chainId, receiverHub);
         }
     }
 
     function sendMultichainActions(MultichainAction[] calldata actions) external onlyOwner {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
-            bytes32 bridgeId = actions[i].bridgeId;
-            address encoder = encoders[chainId][bridgeId];
-
-            bytes32 hash = keccak256(abi.encode(actions[i].calls));
-
-            require(encoder != address(0x00));
+            address encoder = encoders[chainId];
 
             (address bridge, uint256 value, bytes memory data) =
                 IEncoder(encoder).encode(actions[i]);
@@ -43,7 +53,7 @@ contract SenderHub is Owned(msg.sender) {
 
             require(success);
 
-            emit SendMultichainAction(chainId, bridge, encoder, hash);
+            emit SendMultichainAction(chainId, bridge, encoder);
         }
     }
 }

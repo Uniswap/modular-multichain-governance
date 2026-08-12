@@ -2,11 +2,11 @@
 pragma solidity 0.8.35;
 
 // import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {IEncoder} from "src/interfaces/IEncoder.sol";
+import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
+import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 
 interface IInbox {
     function createRetryableTicket(
@@ -28,19 +28,23 @@ struct GasConfig {
 }
 
 contract InboxEncoder is IEncoder {
-    address public immutable BRIDGE_REGISTRY;
     address public immutable TIMELOCK;
+    address public immutable SENDER_HUB;
 
     GasConfig public gasConfig;
-    mapping(uint256 => address) public arbitrumOrbitInbox;
+    mapping(uint256 => address) public arbitrumOrbitInboxes;
 
-    constructor(address bridgeRegistry, address timelock) {
-        BRIDGE_REGISTRY = bridgeRegistry;
+    constructor(address timelock, address senderHub) {
         TIMELOCK = timelock;
+        SENDER_HUB = senderHub;
     }
 
     function setGasConfig(GasConfig memory config) external {
         gasConfig = config;
+    }
+
+    function setArbitrumOrbitInbox(uint256 chainId, address arbitrumOrbitInbox) external {
+        arbitrumOrbitInboxes[chainId] = arbitrumOrbitInbox;
     }
 
     function encode(MultichainAction calldata multichainAction)
@@ -48,9 +52,9 @@ contract InboxEncoder is IEncoder {
         view
         returns (address, uint256, bytes memory)
     {
-        address inbox = arbitrumOrbitInbox[multichainAction.chainId];
+        address inbox = arbitrumOrbitInboxes[multichainAction.chainId];
 
-        address target = BridgeRegistry(BRIDGE_REGISTRY).receiverHubs(multichainAction.bridgeId);
+        address receiverHub = ISenderHub(SENDER_HUB).receiverHubs(multichainAction.chainId);
         uint256 value = 0;
 
         for (uint256 i; i < multichainAction.calls.length; i++) {
@@ -63,7 +67,7 @@ contract InboxEncoder is IEncoder {
             abi.encodeCall(
                 IInbox.createRetryableTicket,
                 (
-                    target,
+                    receiverHub,
                     value,
                     gasConfig.maxSubmissionCost,
                     TIMELOCK,

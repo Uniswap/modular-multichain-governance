@@ -5,6 +5,5 @@ import {Call} from "src/types/Call.sol";
 
 struct MultichainAction {
     uint256 chainId;
-    bytes32 bridgeId;
     Call[] calls;
 }

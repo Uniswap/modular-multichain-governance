@@ -3,8 +3,8 @@ pragma solidity 0.8.35;
 
 import {DecoderError} from "src/util/Errors.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";

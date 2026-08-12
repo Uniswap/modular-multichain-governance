@@ -2,7 +2,7 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 
 contract ReceiverHub is Owned(msg.sender) {

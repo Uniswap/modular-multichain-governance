@@ -2,36 +2,33 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {IEncoder} from "src/interfaces/IEncoder.sol";
+import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
-
-interface IWormhole {
-    function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
-        external
-        payable
-        returns (uint64 sequence);
-    function messageFee() external view returns (uint256);
-}
 
 contract WormholeEncoder is IEncoder, Owned(msg.sender) {
     uint8 public constant CONSISTENCY_LEVEL = 1;
 
     address public immutable WORMHOLE;
-    address public immutable BRIDGE_REGISTRY;
 
     uint32 public nonce;
-    mapping(uint256 chainId => uint16) public toWormholeChainId;
+    mapping(uint256 chainId => uint16) public wormholeChainIds;
 
-    constructor(address wormhole, address bridgeRegistry) {
+    constructor(address wormhole) {
         WORMHOLE = wormhole;
-        BRIDGE_REGISTRY = bridgeRegistry;
     }
 
-    function setWormholeChainId(uint256 realChainId, uint16 wormholeChainId) public onlyOwner {
-        toWormholeChainId[realChainId] = wormholeChainId;
+    function setWormholeChainIds(uint256[] calldata eip155ChainIds, uint16[] calldata whChainIds) public onlyOwner {
+        require(eip155ChainIds.length == whChainIds.length);
+
+        for (uint256 i; i < eip155ChainIds.length; i++) {
+            uint256 eip155ChainId = eip155ChainIds[i];
+            uint16 wormholeChainId = whChainIds[i];
+
+            wormholeChainIds[eip155ChainId] = wormholeChainId;
+        }
     }
 
     function encode(MultichainAction calldata multichainAction)
@@ -57,7 +54,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
                     abi.encodeCall(
                         IBridgeCalls.wormholeCall,
                         abi.encode(
-                            toWormholeChainId[multichainAction.chainId], multichainAction.calls
+                            wormholeChainIds[multichainAction.chainId], multichainAction.calls
                         )
                     ),
                     CONSISTENCY_LEVEL

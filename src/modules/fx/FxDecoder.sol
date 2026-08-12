@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";

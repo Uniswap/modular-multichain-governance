@@ -3,40 +3,12 @@ pragma solidity 0.8.35;
 
 import {DecoderError, WormholeError} from "src/util/Errors.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {BridgeRegistry} from "src/BridgeRegistry.sol";
-import {IBridgeCalls} from "src/interfaces/IBridgeCalls.sol";
-import {IDecoder} from "src/interfaces/IDecoder.sol";
+import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
-
-struct VerifiableMessage {
-    uint8 version;
-    uint32 timestamp;
-    uint32 nonce;
-    uint16 emitterChainId;
-    bytes32 emitterAddress;
-    uint64 sequence;
-    uint8 consistencyLevel;
-    bytes payload;
-    uint32 guardianSetIndex;
-    Signature[] signatures;
-    bytes32 hash;
-}
-
-struct Signature {
-    bytes32 r;
-    bytes32 s;
-    uint8 v;
-    uint8 guardianIndex;
-}
-
-interface IWormhole {
-    function parseAndVerifyVM(bytes calldata encodedVM)
-        external
-        view
-        returns (VerifiableMessage memory vm, bool valid, string memory reason);
-}
+import {VerifiableMessage, IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 
 contract WormholeDecoder is IDecoder {
     uint16 constant ETH_WORMHOLE_CHAIN_ID = 2;
@@ -68,7 +40,7 @@ contract WormholeDecoder is IDecoder {
         (VerifiableMessage memory vm, bool valid, string memory reason) =
             IWormhole(WORMHOLE).parseAndVerifyVM(wormholeMessage);
 
-        require(valid, WormholeError.WormholeParseVerifyVM(reason));
+        require(valid, WormholeError.ParseVerifyVM(reason));
         require(
             SENDER_HUB == address(uint160(uint256(vm.emitterAddress))), DecoderError.NotFromSenderHub()
         );
