@@ -3,27 +3,29 @@ pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
+import {IReceiverHub} from "src/interfaces/IReceiverHub.sol";
 import {Call} from "src/types/Call.sol";
 
-contract ReceiverHub is Owned(msg.sender) {
-    event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
-    event CallsReceived(address indexed bridge, address indexed decoder, bytes32 indexed callsHash);
-
+/// @title Receiver Hub.
+/// @notice Receives messages from arbitrary bridges, dispatches decoders, and forwards the decoded
+///         calls as the owner of the Uniswap protocol on the respective chain.
+contract ReceiverHub is Owned(msg.sender), IReceiverHub {
+    /// @inheritdoc IReceiverHub
     mapping(bytes4 selector => address) public decoders;
 
-    function setDecoder(bytes4 selector, address decoder) external onlyOwner {
+    /// @inheritdoc IReceiverHub
+    function setDecoder(bytes4 selector, address decoder) public onlyOwner {
         decoders[selector] = decoder;
 
         emit DecoderRegistered(selector, decoder);
     }
 
+    /// @inheritdoc IReceiverHub
     fallback() external payable {
         address decoder = decoders[msg.sig];
         require(address(decoder) != address(0x00));
 
         Call[] memory calls = IDecoder(decoder).decode(msg.sender, msg.data);
-
-        bytes32 callsHash = keccak256(abi.encode(calls));
 
         for (uint256 i; i < calls.length; i++) {
             address target = calls[i].target;
@@ -35,8 +37,9 @@ contract ReceiverHub is Owned(msg.sender) {
             require(success);
         }
 
-        emit CallsReceived(msg.sender, decoder, callsHash);
+        emit CallsReceived(msg.sender, msg.sig, decoder);
     }
 
+    /// @inheritdoc IReceiverHub
     receive() external payable {}
 }

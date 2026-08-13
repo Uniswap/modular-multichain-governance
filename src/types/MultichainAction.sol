@@ -3,6 +3,7 @@ pragma solidity 0.8.35;
 
 import {Call} from "src/types/Call.sol";
 
+/// @dev Array of calls scoped to a chain Id.
 struct MultichainAction {
     uint256 chainId;
     Call[] calls;

@@ -10,24 +10,38 @@ import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
 import {VerifiableMessage, IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 
+/// @title Wormhole Decoder
+/// @notice Decodes Wormhole "Verifiable Message" messages.
 contract WormholeDecoder is IDecoder {
+    /// @notice Wormhole-defined chain Id for Ethereum.
     uint16 constant ETH_WORMHOLE_CHAIN_ID = 2;
+
+    /// @notice Message timeout.
     uint256 constant MSG_TIMEOUT = 2 days;
 
+    /// @notice Sender Hub on Ethereum.
     address public immutable SENDER_HUB;
+
+    /// @notice Receiver Hub on local chain.
     address public immutable RECEIVER_HUB;
+
+    /// @notice Wormhole core on local chain.
     address public immutable WORMHOLE;
-    uint16 public immutable THIS_WORMHOLE_CHAIN_ID;
 
-    uint256 public minimumNonce;
+    /// @notice Nonce for message sequencing.
+    uint256 public nonce;
 
-    constructor(address senderHub, address receiverHub, address wormhole, uint16 thisChainId) {
+    constructor(address senderHub, address receiverHub, address wormhole) {
         SENDER_HUB = senderHub;
         RECEIVER_HUB = receiverHub;
         WORMHOLE = wormhole;
-        THIS_WORMHOLE_CHAIN_ID = thisChainId;
     }
 
+    /// @notice Decodes a custom-encoded message containing the encoded Wormhole Verifiable Mesasge.
+    /// @dev Anyone can relay a message.
+    /// @dev Verification and message format is checked by Wormhole core.
+    /// @param data Encoded `wormholeCall` function.
+    /// @return Decoded call array.
     function decode(address, bytes calldata data) public returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
 
@@ -46,12 +60,12 @@ contract WormholeDecoder is IDecoder {
         );
         require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, WormholeError.NotFromEthereum());
         require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, WormholeError.Expired());
-        require(vm.sequence >= minimumNonce, WormholeError.InvalidNonce());
+        require(vm.sequence == nonce, WormholeError.InvalidNonce());
 
         (uint16 receiverChainId, Call[] memory calls) = abi.decode(vm.payload, (uint16, Call[]));
-        require(receiverChainId == THIS_WORMHOLE_CHAIN_ID, WormholeError.NotToThisChain());
+        require(receiverChainId == block.chainid, WormholeError.NotToThisChain());
 
-        minimumNonce = vm.sequence + 1;
+        nonce += 1;
 
         return calls;
     }

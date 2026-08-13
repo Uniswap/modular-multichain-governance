@@ -8,9 +8,16 @@ import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
 import {DecoderError} from "src/util/Errors.sol";
 
+/// @title Polygon Fx Decoder.
+/// @notice Decodes message on Polygon from the FxRoot to FxChild system.
 contract FxDecoder is IDecoder {
+    /// @notice Sender Hub on Ethereum.
     address public immutable SENDER_HUB;
+
+    /// @notice Receiver Hub on local chain.
     address public immutable RECEIVER_HUB;
+
+    /// @notice Polygon FxChild contract.
     address public immutable FX_CHILD;
 
     constructor(address senderHub, address receiverHub, address fxChild) {
@@ -19,8 +26,13 @@ contract FxDecoder is IDecoder {
         FX_CHILD = fxChild;
     }
 
-    function decode(address, bytes calldata data) public view returns (Call[] memory) {
+    /// @notice Decodes a message from Polygon's FxChild contract.
+    /// @param caller Acount that called the Receiver Hub. MUST be the FxChild.
+    /// @param data Data encoded in `processMessageFromRoot` from FxChild.
+    /// @return Decoded call array.
+    function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
+        require(caller == FX_CHILD, DecoderError.InvalidReceiverHubCaller());
 
         bytes4 selector = CalldataHandler.getSelector(data);
         require(selector == IBridgeCalls.processMessageFromRoot.selector, DecoderError.InvalidSelector());

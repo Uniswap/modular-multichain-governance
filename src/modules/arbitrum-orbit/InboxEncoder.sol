@@ -1,52 +1,86 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-// import {Owned} from "lib/solmate/src/auth/Owned.sol";
+import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
+import {IInbox} from "src/interfaces/bridges/IInbox.sol";
 
-interface IInbox {
-    function createRetryableTicket(
-        address to,
-        uint256 l2CallValue,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        bytes memory data
-    ) external payable returns (uint256);
-}
+/// @title Arbitrum Orbit Inbox Encoder
+/// @notice Encodes messages for the Inbox bridge of Arbitrum Orbit chains.
+contract InboxEncoder is Owned(msg.sender), IEncoder {
+    /// @notice Logged when gas parameters are set.
+    /// @param gasLimit New gas limit.
+    /// @param maxFeePerGas New max fee per gas.
+    /// @param maxSubmissionCost New max submission cost.
+    event SetGasParameters(uint256 gasLimit, uint256 maxFeePerGas, uint256 maxSubmissionCost);
 
-struct GasConfig {
-    uint256 gasLimit;
-    uint256 maxFeePerGas;
-    uint256 maxSubmissionCost;
-}
+    /// @notice Logged when Arbitrum Orbit Inbox is set.
+    /// @param chainId Arbitrum Orbit's chain Id.
+    /// @param arbitrumOrbitInbox Chain's Inbox.
+    event SetArbitrumOrbitInbox(uint256 indexed chainId, address indexed arbitrumOrbitInbox);
 
-contract InboxEncoder is IEncoder {
+    /// @notice Governance-owned timelock.
+    /// @dev For gas refunds.
     address public immutable TIMELOCK;
+
+    /// @notice Sender Hub.
+    /// @dev For querying respective Receiver Hub.
     address public immutable SENDER_HUB;
 
-    GasConfig public gasConfig;
-    mapping(uint256 => address) public arbitrumOrbitInboxes;
+    /// @notice Gas limit.
+    uint256 public gasLimit;
+
+    /// @notice Max fee per gas.
+    uint256 public maxFeePerGas;
+
+    /// @notice Max submission cost.
+    uint256 public maxSubmissionCost;
+
+    /// @notice Maps chain Id's to Arbitrum Orbit Inboxes.
+    mapping(uint256 chainId => address) public arbitrumOrbitInboxes;
 
     constructor(address timelock, address senderHub) {
         TIMELOCK = timelock;
         SENDER_HUB = senderHub;
     }
 
-    function setGasConfig(GasConfig memory config) external {
-        gasConfig = config;
+    /// @notice Sets gas parameters.
+    /// @param newGasLimit New gas limit.
+    /// @param newMaxFeePerGas New max fee per gas.
+    /// @param newMaxSubmissionCost New max submission cost.
+    function setGasParameters(
+        uint256 newGasLimit,
+        uint256 newMaxFeePerGas,
+        uint256 newMaxSubmissionCost
+    ) external onlyOwner {
+        gasLimit = newGasLimit;
+        maxFeePerGas = newMaxFeePerGas;
+        maxSubmissionCost = newMaxSubmissionCost;
+
+        emit SetGasParameters(newGasLimit, newMaxFeePerGas, newMaxSubmissionCost);
     }
 
-    function setArbitrumOrbitInbox(uint256 chainId, address arbitrumOrbitInbox) external {
+    /// @notice Sets Arbitrum Orbit for a given chainId.
+    /// @param chainId Arbitrum Orbit's chain Id.
+    /// @param arbitrumOrbitInbox Arbitrum Orbit chain's Inbox.
+    function setArbitrumOrbitInbox(uint256 chainId, address arbitrumOrbitInbox) external onlyOwner {
         arbitrumOrbitInboxes[chainId] = arbitrumOrbitInbox;
+
+        emit SetArbitrumOrbitInbox(chainId, arbitrumOrbitInbox);
     }
 
+    /// @notice Encodes a multichain action for an Arbitrum Orbit Inbox.
+    /// @dev The Inbox is unique to each Arbitrum Orbit chain.
+    /// @dev The value is the sum of all call values and the gas parameters.
+    /// @dev The data is an array of calls behind an `arbitrumCall` function selector.
+    /// @param multichainAction Action to send to the Arbitrum Orbit chain.
+    /// @return Inbox contract.
+    /// @return Value to send to Inbox.
+    /// @return Data to send to Inbox.
     function encode(MultichainAction calldata multichainAction)
         public
         view
@@ -61,19 +95,21 @@ contract InboxEncoder is IEncoder {
             value += multichainAction.calls[i].value;
         }
 
+        value += (gasLimit * maxFeePerGas) + maxSubmissionCost;
+
         return (
             inbox,
-            (gasConfig.gasLimit * gasConfig.maxFeePerGas) + gasConfig.maxSubmissionCost + value,
+            value,
             abi.encodeCall(
                 IInbox.createRetryableTicket,
                 (
                     receiverHub,
                     value,
-                    gasConfig.maxSubmissionCost,
+                    maxSubmissionCost,
                     TIMELOCK,
                     TIMELOCK,
-                    gasConfig.gasLimit,
-                    gasConfig.maxFeePerGas,
+                    gasLimit,
+                    maxFeePerGas,
                     abi.encodeCall(IBridgeCalls.arbitrumCall, (multichainAction.calls))
                 )
             )

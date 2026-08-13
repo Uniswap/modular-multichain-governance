@@ -6,15 +6,18 @@ import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
+/// @title Sender Hub.
+/// @notice Receives an array of MultichainAction's from governance, dispatches encoders, and sends
+///         multichain actions to bridges based on each action's target chain Id.
 contract SenderHub is Owned(msg.sender), ISenderHub {
-    event SetEncoder(uint256 indexed chainId, address indexed module);
-    event SendMultichainAction(uint256 indexed chainId, address indexed bridge, address indexed encoder);
-    event SetReceiverHub(uint256 indexed chainId, address indexed receiverHub);
-
+    /// @inheritdoc ISenderHub
     mapping(uint256 chainId => address) public encoders;
+
+    /// @inheritdoc ISenderHub
     mapping(uint256 chainId => address) public receiverHubs;
 
-    function setEncoders(uint256[] calldata chainIds, address[] calldata encoderModules) external onlyOwner {
+    /// @inheritdoc ISenderHub
+    function setEncoders(uint256[] calldata chainIds, address[] calldata encoderModules) public onlyOwner {
         require(chainIds.length == encoderModules.length);
 
         for (uint256 i; i < chainIds.length; i++) {
@@ -27,7 +30,8 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
         }    
     }
 
-    function setReceiverHubs(uint256[] calldata chainIds, address[] calldata recvHubs) external onlyOwner {
+    /// @inheritdoc ISenderHub
+    function setReceiverHubs(uint256[] calldata chainIds, address[] calldata recvHubs) public onlyOwner {
         require(chainIds.length == recvHubs.length);
 
         for (uint256 i; i < chainIds.length; i++) {
@@ -41,7 +45,8 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
         }
     }
 
-    function sendMultichainActions(MultichainAction[] calldata actions) external onlyOwner {
+    /// @inheritdoc ISenderHub
+    function sendMultichainActions(MultichainAction[] calldata actions) public onlyOwner {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
             address encoder = encoders[chainId];

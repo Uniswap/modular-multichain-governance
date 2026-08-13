@@ -4,15 +4,17 @@ pragma solidity 0.8.35;
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
+import {IFxRoot} from "src/interfaces/bridges/IFxRoot.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
-interface IFxRoot {
-    function sendMessageToChild(address, bytes memory) external;
-}
-
+/// @title Polygon Fx Encoder.
+/// @notice Encodes message to send to FxRoot on Ethereum (Polygon's bridge).
 contract FxEncoder is IEncoder {
+    /// @notice Polygon's FxRoot.
     address public immutable FX_ROOT;
+
+    /// @notice Sender Hub.
     address public immutable SENDER_HUB;
 
     constructor(address fxRoot, address senderHub) {
@@ -20,6 +22,12 @@ contract FxEncoder is IEncoder {
         SENDER_HUB = senderHub;
     }
 
+    /// @notice Encodes a multichain action for the Polygon FxRoot.
+    /// @dev Call value MUST be zero.
+    /// @param multichainAction Action to send to Polygon.
+    /// @return FxRoot contract.
+    /// @return Value to send to FxRoot.
+    /// @return Data to send to FxRoot.
     function encode(MultichainAction calldata multichainAction)
         public
         view

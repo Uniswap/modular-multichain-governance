@@ -2,9 +2,10 @@
 pragma solidity 0.8.35;
 
 library DecoderError {
+    error InvalidReceiverHubCaller();
     error CallerNotReceiverHub();
     error NotFromSenderHub();
-    error EmptyCalldata();
+    error CalldataTooShort();
     error InvalidSelector();
 }
 
