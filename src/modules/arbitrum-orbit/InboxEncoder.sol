@@ -20,8 +20,8 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
 
     /// @notice Logged when Arbitrum Orbit Inbox is set.
     /// @param chainId Arbitrum Orbit's chain Id.
-    /// @param arbitrumOrbitInbox Chain's Inbox.
-    event SetArbitrumOrbitInbox(uint256 indexed chainId, address indexed arbitrumOrbitInbox);
+    /// @param inbox Chain's Inbox.
+    event SetInbox(uint256 indexed chainId, address indexed inbox);
 
     /// @notice Governance-owned timelock.
     /// @dev For gas refunds.
@@ -41,7 +41,7 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
     uint256 public maxSubmissionCost;
 
     /// @notice Maps chain Id's to Arbitrum Orbit Inboxes.
-    mapping(uint256 chainId => address) public arbitrumOrbitInboxes;
+    mapping(uint256 chainId => address) public inboxes;
 
     constructor(address timelock, address senderHub) {
         TIMELOCK = timelock;
@@ -66,11 +66,11 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
 
     /// @notice Sets Arbitrum Orbit for a given chainId.
     /// @param chainId Arbitrum Orbit's chain Id.
-    /// @param arbitrumOrbitInbox Arbitrum Orbit chain's Inbox.
-    function setArbitrumOrbitInbox(uint256 chainId, address arbitrumOrbitInbox) external onlyOwner {
-        arbitrumOrbitInboxes[chainId] = arbitrumOrbitInbox;
+    /// @param inbox Arbitrum Orbit chain's Inbox.
+    function setInbox(uint256 chainId, address inbox) external onlyOwner {
+        inboxes[chainId] = inbox;
 
-        emit SetArbitrumOrbitInbox(chainId, arbitrumOrbitInbox);
+        emit SetInbox(chainId, inbox);
     }
 
     /// @notice Encodes a multichain action for an Arbitrum Orbit Inbox.
@@ -86,7 +86,7 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
         view
         returns (address, uint256, bytes memory)
     {
-        address inbox = arbitrumOrbitInboxes[multichainAction.chainId];
+        address inbox = inboxes[multichainAction.chainId];
 
         address receiverHub = ISenderHub(SENDER_HUB).receiverHubs(multichainAction.chainId);
         uint256 value = 0;
