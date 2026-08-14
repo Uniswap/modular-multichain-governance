@@ -16,33 +16,16 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
     /// @inheritdoc ISenderHub
     mapping(uint256 chainId => address) public receiverHubs;
 
-    /// @inheritdoc ISenderHub
-    function setEncoders(uint256[] calldata chainIds, address[] calldata encoderModules) public onlyOwner {
-        require(chainIds.length == encoderModules.length);
+    function setEncoder(uint256 chainId, address encoder) public onlyOwner {
+        encoders[chainId] = encoder;
 
-        for (uint256 i; i < chainIds.length; i++) {
-            uint256 chainId = chainIds[i];
-            address encoder = encoderModules[i];
-
-            encoders[chainId] = encoder;
-
-            emit SetEncoder(chainId, encoder);
-        }    
+        emit SetEncoder(chainId, encoder);
     }
 
-    /// @inheritdoc ISenderHub
-    function setReceiverHubs(uint256[] calldata chainIds, address[] calldata recvHubs) public onlyOwner {
-        require(chainIds.length == recvHubs.length);
+    function setReceiverHub(uint256 chainId, address receiverHub) public onlyOwner {
+        receiverHubs[chainId] = receiverHub;
 
-        for (uint256 i; i < chainIds.length; i++) {
-            uint256 chainId = chainIds[i];
-
-            address receiverHub = recvHubs[i];
-
-            receiverHubs[chainId] = receiverHub;
-
-            emit SetReceiverHub(chainId, receiverHub);
-        }
+        emit SetReceiverHub(chainId, receiverHub);
     }
 
     /// @inheritdoc ISenderHub

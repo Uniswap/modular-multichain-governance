@@ -30,15 +30,15 @@ interface ISenderHub {
     /// @return Receiver Hub.
     function receiverHubs(uint256 chainId) external view returns (address);
 
-    /// @notice Sets encoders to chain Id's
-    /// @param chainIds Chain Id's.
-    /// @param encoders Encoder modules.
-    function setEncoders(uint256[] calldata chainIds, address[] calldata encoders) external;
+    /// @notice Sets encoder to chain Id.
+    /// @param chainId Chain Id.
+    /// @param encoder Encoder module.
+    function setEncoders(uint256 chainId, address encoder) external;
 
-    /// @notice Sets receiver hubs to chain Id's
-    /// @param chainIds Chain Id's.
-    //// @param receiverHubs Receiver hubs.
-    function setReceiverHubs(uint256[] calldata chainIds, address[] calldata receiverHubs) external;
+    /// @notice Sets receiver hub to chain Id.
+    /// @param chainId Chain Id.
+    //// @param receiverHub Receiver hub.
+    function setReceiverHubs(uint256 chainId, address receiverHub) external;
 
     /// @notice Sends an array of multichain actions.
     /// @param actions Multichain actions.
