@@ -2,8 +2,8 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IReceiverHub} from "src/interfaces/IReceiverHub.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 
 /// @title Receiver Hub.

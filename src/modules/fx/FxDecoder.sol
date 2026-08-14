@@ -35,10 +35,13 @@ contract FxDecoder is IDecoder {
         require(caller == FX_CHILD, DecoderError.InvalidReceiverHubCaller());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.processMessageFromRoot.selector, DecoderError.InvalidSelector());
+        require(
+            selector == IBridgeCalls.processMessageFromRoot.selector, DecoderError.InvalidSelector()
+        );
 
         bytes memory dataWithoutSelector = CalldataHandler.getCalldataWithoutSelector(data);
-        (, address rootMessageSender, bytes memory encodedCalls) = abi.decode(dataWithoutSelector, (uint256, address, bytes));
+        (, address rootMessageSender, bytes memory encodedCalls) =
+            abi.decode(dataWithoutSelector, (uint256, address, bytes));
         require(rootMessageSender == SENDER_HUB, DecoderError.NotFromSenderHub());
 
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));

@@ -2,12 +2,12 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
+import {ISenderHub} from "src/interfaces/ISenderHub.sol";
+import {IInbox} from "src/interfaces/bridges/IInbox.sol";
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
-import {ISenderHub} from "src/interfaces/ISenderHub.sol";
-import {IInbox} from "src/interfaces/bridges/IInbox.sol";
 
 /// @title Arbitrum Orbit Inbox Encoder
 /// @notice Encodes messages for the Inbox bridge of Arbitrum Orbit chains.

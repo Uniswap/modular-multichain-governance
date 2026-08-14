@@ -33,7 +33,11 @@ library CalldataHandler {
     /// @dev Gets the calldata without the selector for a given calldata payload.
     /// @param encodedCall An ABI-encoded call with a selector.
     /// @return Data without the selector.
-    function getCalldataWithoutSelector(bytes calldata encodedCall) internal pure returns (bytes memory) {
+    function getCalldataWithoutSelector(bytes calldata encodedCall)
+        internal
+        pure
+        returns (bytes memory)
+    {
         require(encodedCall.length >= 4, DecoderError.CalldataTooShort());
 
         bytes memory data;

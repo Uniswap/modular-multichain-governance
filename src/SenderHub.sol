@@ -2,8 +2,8 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
+import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 /// @title Sender Hub.

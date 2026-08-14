@@ -13,7 +13,9 @@ interface ISenderHub {
     /// @param chainId Chain the action targets.
     /// @param bridge Bridge address to be called (returned by `encoder`).
     /// @param encoder Encoder module.
-    event SendMultichainAction(uint256 indexed chainId, address indexed bridge, address indexed encoder);
+    event SendMultichainAction(
+        uint256 indexed chainId, address indexed bridge, address indexed encoder
+    );
 
     /// @notice Logged when a receiver hub is set.
     /// @param chainId Chain where the `receiverHub` exists.

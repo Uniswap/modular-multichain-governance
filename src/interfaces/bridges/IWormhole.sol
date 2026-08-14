@@ -38,9 +38,9 @@ interface IWormhole {
     /// @param payload Encoded data to forward to the receiver.
     /// @param consistencyLevel If it's `1`, it means "finalized on Ethereum".
     function publishMessage(uint32 nonce, bytes memory payload, uint8 consistencyLevel)
-            external
-            payable
-            returns (uint64 sequence);
+        external
+        payable
+        returns (uint64 sequence);
 
     /// @dev Message Fee for Wormhole team.
     function messageFee() external view returns (uint256);
