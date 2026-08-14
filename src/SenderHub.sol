@@ -16,12 +16,14 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
     /// @inheritdoc ISenderHub
     mapping(uint256 chainId => address) public receiverHubs;
 
+    /// @inheritdoc ISenderHub
     function setEncoder(uint256 chainId, address encoder) public onlyOwner {
         encoders[chainId] = encoder;
 
         emit SetEncoder(chainId, encoder);
     }
 
+    /// @inheritdoc ISenderHub
     function setReceiverHub(uint256 chainId, address receiverHub) public onlyOwner {
         receiverHubs[chainId] = receiverHub;
 
