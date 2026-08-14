@@ -44,5 +44,5 @@ interface ISenderHub {
 
     /// @notice Sends an array of multichain actions.
     /// @param actions Multichain actions.
-    function sendMultichainActions(MultichainAction[] calldata actions) external;
+    function sendMultichainActions(MultichainAction[] calldata actions) external payable;
 }

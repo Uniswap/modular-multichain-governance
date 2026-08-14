@@ -31,7 +31,7 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
     }
 
     /// @inheritdoc ISenderHub
-    function sendMultichainActions(MultichainAction[] calldata actions) public onlyOwner {
+    function sendMultichainActions(MultichainAction[] calldata actions) public payable onlyOwner {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
             address encoder = encoders[chainId];
