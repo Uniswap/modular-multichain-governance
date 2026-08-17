@@ -10,13 +10,13 @@ import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 contract Portal2Encoder is Owned(msg.sender), IEncoder {
-    event SetGasLimit(uint256 gasLimit);
+    event SetGasLimit(uint64 gasLimit);
 
     event SetPortal(uint256 indexed chainId, address indexed portal);
 
     address public immutable SENDER_HUB;
 
-    uint256 public gasLimit;
+    uint64 public gasLimit;
 
     mapping(uint256 chainId => address) public portals;
 
@@ -24,7 +24,7 @@ contract Portal2Encoder is Owned(msg.sender), IEncoder {
         SENDER_HUB = senderHub;
     }
 
-    function setGasLimit(uint256 newGasLimit) external onlyOwner {
+    function setGasLimit(uint64 newGasLimit) external onlyOwner {
         gasLimit = newGasLimit;
 
         emit SetGasLimit(newGasLimit);

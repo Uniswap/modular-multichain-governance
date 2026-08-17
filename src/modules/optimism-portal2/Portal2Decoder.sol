@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IPortal2} from "src/interfaces/bridges/IPortal2.sol";
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
+import {CalldataHandler} from "src/util/CalldataHandler.sol";
+import {DecoderError} from "src/util/Errors.sol";
 
-contract Portal2Decoder is Owned(msg.sender), IDecoder {
+contract Portal2Decoder is IDecoder {
     /// @dev Op Stack chain's Alias system.
     uint160 internal constant OP_STACK_ALIAS = uint160(0x1111000000000000000000000000000000001111);
 

@@ -3,9 +3,7 @@ pragma solidity 0.8.35;
 
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {IFxRoot} from "src/interfaces/bridges/IFxRoot.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
-import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 /// @title Polygon Fx Encoder.

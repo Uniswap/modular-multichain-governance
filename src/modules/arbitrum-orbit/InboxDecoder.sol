@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
-import {MultichainAction} from "src/types/MultichainAction.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
 import {DecoderError} from "src/util/Errors.sol";
 
 /// @title Arbitrum Orbit Inbox Decoder
 /// @notice Decodes messages on Arbitrum Orbit chains.
-contract InboxDecoder is IDecoder, Owned(msg.sender) {
+contract InboxDecoder is IDecoder {
     /// @dev Arbitrum Orbit chain's Alias system.
     uint160 internal constant ARBITRUM_ALIAS = uint160(0x1111000000000000000000000000000000001111);
 
