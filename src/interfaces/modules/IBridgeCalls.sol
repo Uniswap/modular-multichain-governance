@@ -25,6 +25,13 @@ interface IBridgeCalls {
     ///      no selector).
     function arbitrumCall(Call[] memory calls) external;
 
+    /// @notice Custom Optimism Portal2 call function.
+    /// @dev OP Stack chains forward the `data` parameter from its Portal2 call directly. We define
+    ///      this function to encapsulate teh call array such that the ReceiverHub can dispatch the
+    ///      Portal2Decoder based on the selector rather than the call array
+    ///      (which has no selector).
+    function portal2Call(Call[] memory calls) external;
+
     /// @notice Polygon Fx Child call function.
     /// @dev Polygon calls this function via its FxChild contract on Polygon. The FxChild calls the
     ///      ReceiverHub with this function so it can dispatch the FxDecoder.
