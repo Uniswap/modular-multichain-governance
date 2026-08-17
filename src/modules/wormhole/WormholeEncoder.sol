@@ -3,8 +3,8 @@ pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -78,7 +78,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
                 (
                     nonce,
                     abi.encodeCall(
-                        IBridgeCalls.wormholeCall,
+                        IWormholeCalls.wormholeCall,
                         abi.encode(multichainAction.chainId, multichainAction.calls)
                     ),
                     CONSISTENCY_LEVEL

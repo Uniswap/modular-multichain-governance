@@ -3,8 +3,8 @@ pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IInbox} from "src/interfaces/bridges/IInbox.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {IArbitrumCalls} from "src/modules/arbitrum-orbit/IArbitrumCalls.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -106,7 +106,7 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
                     TIMELOCK,
                     gasLimit,
                     maxFeePerGas,
-                    abi.encodeCall(IBridgeCalls.arbitrumCall, (multichainAction.calls))
+                    abi.encodeCall(IArbitrumCalls.arbitrumCall, (multichainAction.calls))
                 )
             )
         });

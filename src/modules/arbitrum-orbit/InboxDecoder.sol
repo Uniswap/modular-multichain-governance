@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
+import {IArbitrumCalls} from "src/modules/arbitrum-orbit/IArbitrumCalls.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
 
@@ -32,7 +32,7 @@ contract InboxDecoder is IDecoder {
         require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.arbitrumCall.selector, InvalidSelector());
+        require(selector == IArbitrumCalls.arbitrumCall.selector, InvalidSelector());
 
         bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));

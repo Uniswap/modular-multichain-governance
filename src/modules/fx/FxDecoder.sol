@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
+import {IFxMessageProcessor} from "src/interfaces/bridges/IFxMessageProcessor.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
@@ -33,7 +33,7 @@ contract FxDecoder is IDecoder {
         require(caller == FX_CHILD, InvalidReceiverHubCaller());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.processMessageFromRoot.selector, InvalidSelector());
+        require(selector == IFxMessageProcessor.processMessageFromRoot.selector, InvalidSelector());
 
         bytes calldata dataWithoutSelector = CalldataHandler.getCalldataWithoutSelector(data);
         (, address rootMessageSender, bytes memory encodedCalls) =

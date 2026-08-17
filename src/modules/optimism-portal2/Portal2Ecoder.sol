@@ -3,8 +3,8 @@ pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IPortal2} from "src/interfaces/bridges/IPortal2.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {IPortal2Calls} from "src/modules/optimism-portal2/IPortal2Calls.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -56,7 +56,7 @@ contract Portal2Encoder is Owned(msg.sender), IEncoder {
                     value,
                     gasLimit,
                     false,
-                    abi.encodeCall(IBridgeCalls.portal2Call, (multichainAction.calls))
+                    abi.encodeCall(IPortal2Calls.portal2Call, (multichainAction.calls))
                 )
             )
         });

@@ -2,8 +2,8 @@
 pragma solidity 0.8.35;
 
 import {IWormhole, VerifiableMessage} from "src/interfaces/bridges/IWormhole.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
+import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {WormholeError} from "src/modules/wormhole/WormholeError.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
@@ -44,7 +44,7 @@ contract WormholeDecoder is IDecoder {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.wormholeCall.selector, InvalidSelector());
+        require(selector == IWormholeCalls.wormholeCall.selector, InvalidSelector());
 
         bytes calldata encodedWormholeMessage = CalldataHandler.getCalldataWithoutSelector(data);
         bytes memory wormholeMessage = abi.decode(encodedWormholeMessage, (bytes));
