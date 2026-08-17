@@ -35,12 +35,12 @@ interface ISenderHub {
     /// @notice Sets encoder to chain Id.
     /// @param chainId Chain Id.
     /// @param encoder Encoder module.
-    function setEncoders(uint256 chainId, address encoder) external;
+    function setEncoder(uint256 chainId, address encoder) external;
 
     /// @notice Sets receiver hub to chain Id.
     /// @param chainId Chain Id.
     //// @param receiverHub Receiver hub.
-    function setReceiverHubs(uint256 chainId, address receiverHub) external;
+    function setReceiverHub(uint256 chainId, address receiverHub) external;
 
     /// @notice Sends an array of multichain actions.
     /// @param actions Multichain actions.
