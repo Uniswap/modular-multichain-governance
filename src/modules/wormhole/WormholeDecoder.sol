@@ -46,7 +46,7 @@ contract WormholeDecoder is IDecoder {
         bytes4 selector = CalldataHandler.getSelector(data);
         require(selector == IBridgeCalls.wormholeCall.selector, DecoderError.InvalidSelector());
 
-        bytes memory encodedWormholeMessage = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedWormholeMessage = CalldataHandler.getCalldataWithoutSelector(data);
         bytes memory wormholeMessage = abi.decode(encodedWormholeMessage, (bytes));
 
         (VerifiableMessage memory vm, bool valid, string memory reason) =

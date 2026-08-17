@@ -35,7 +35,7 @@ contract InboxDecoder is IDecoder {
         bytes4 selector = CalldataHandler.getSelector(data);
         require(selector == IBridgeCalls.arbitrumCall.selector, DecoderError.InvalidSelector());
 
-        bytes memory encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
 
         return calls;
