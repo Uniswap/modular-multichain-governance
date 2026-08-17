@@ -5,7 +5,6 @@ import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
-import {DecoderError} from "src/util/Errors.sol";
 
 /// @title Arbitrum Orbit Inbox Decoder
 /// @notice Decodes messages on Arbitrum Orbit chains.
@@ -29,11 +28,11 @@ contract InboxDecoder is IDecoder {
     /// @param data Encoded `arbitrumCall` function.
     /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
-        require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
-        require(removeAlias(caller) == SENDER_HUB, DecoderError.NotFromSenderHub());
+        require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
+        require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.arbitrumCall.selector, DecoderError.InvalidSelector());
+        require(selector == IBridgeCalls.arbitrumCall.selector, InvalidSelector());
 
         bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));

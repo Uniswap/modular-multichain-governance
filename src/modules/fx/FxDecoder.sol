@@ -5,7 +5,6 @@ import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
-import {DecoderError} from "src/util/Errors.sol";
 
 /// @title Polygon Fx Decoder.
 /// @notice Decodes message on Polygon from the FxRoot to FxChild system.
@@ -30,18 +29,16 @@ contract FxDecoder is IDecoder {
     /// @param data Data encoded in `processMessageFromRoot` from FxChild.
     /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
-        require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
-        require(caller == FX_CHILD, DecoderError.InvalidReceiverHubCaller());
+        require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
+        require(caller == FX_CHILD, InvalidReceiverHubCaller());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(
-            selector == IBridgeCalls.processMessageFromRoot.selector, DecoderError.InvalidSelector()
-        );
+        require(selector == IBridgeCalls.processMessageFromRoot.selector, InvalidSelector());
 
         bytes calldata dataWithoutSelector = CalldataHandler.getCalldataWithoutSelector(data);
         (, address rootMessageSender, bytes memory encodedCalls) =
             abi.decode(dataWithoutSelector, (uint256, address, bytes));
-        require(rootMessageSender == SENDER_HUB, DecoderError.NotFromSenderHub());
+        require(rootMessageSender == SENDER_HUB, NotFromSenderHub());
 
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
 

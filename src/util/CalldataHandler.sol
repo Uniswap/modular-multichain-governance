@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {DecoderError} from "src/util/Errors.sol";
+import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 
 /// @title Calldata Processing Library.
 /// @dev This is used for the `data` parameter for Decoder modules.
@@ -11,7 +11,7 @@ library CalldataHandler {
     /// @param encodedCall An ABI-encoded call with a selector.
     /// @return The selector.
     function getSelector(bytes calldata encodedCall) internal pure returns (bytes4) {
-        require(encodedCall.length >= 4, DecoderError.CalldataTooShort());
+        require(encodedCall.length >= 4, IDecoder.CalldataTooShort());
 
         return bytes4(encodedCall[:4]);
     }
@@ -26,7 +26,7 @@ library CalldataHandler {
         pure
         returns (bytes calldata)
     {
-        require(encodedCall.length >= 4, DecoderError.CalldataTooShort());
+        require(encodedCall.length >= 4, IDecoder.CalldataTooShort());
 
         return encodedCall[4:];
     }
