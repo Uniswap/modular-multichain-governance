@@ -53,7 +53,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
     ///      to anyone. The Wormhole decoder is responsible for enforcing the correct receiver hub.
     /// @param multichainAction Action to send to the Receiver Hub on the remote chain.
     /// @return Bridge call(s) for SenderHub to make.
-    function encode(MultichainAction calldata multichainAction, address)
+    function encode(address, MultichainAction calldata multichainAction)
         public
         returns (Call[] memory)
     {

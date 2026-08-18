@@ -18,10 +18,10 @@ contract FxEncoder is IEncoder {
 
     /// @notice Encodes a multichain action for the Polygon FxRoot.
     /// @dev Call value MUST be zero.
-    /// @param multichainAction Action to send to Polygon.
     /// @param receiverHub Receiver Hub on the remote chain. MUST be set on SenderHub.
+    /// @param multichainAction Action to send to Polygon.
     /// @return Bridge call(s) for SenderHub to make.
-    function encode(MultichainAction calldata multichainAction, address receiverHub)
+    function encode(address receiverHub, MultichainAction calldata multichainAction)
         public
         view
         returns (Call[] memory)

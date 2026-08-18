@@ -71,10 +71,10 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
     /// @dev The Inbox is unique to each Arbitrum Orbit chain.
     /// @dev The value is the sum of all call values and the gas parameters.
     /// @dev The data is an array of calls behind an `arbitrumCall` function selector.
-    /// @param multichainAction Action to send to the Arbitrum Orbit chain.
     /// @param receiverHub Receiver Hub on the remote chain. MUST be set on SenderHub.
+    /// @param multichainAction Action to send to the Arbitrum Orbit chain.
     /// @return Bridge call(s) for SenderHub to make.
-    function encode(MultichainAction calldata multichainAction, address receiverHub)
+    function encode(address receiverHub, MultichainAction calldata multichainAction)
         public
         view
         returns (Call[] memory)

@@ -29,7 +29,7 @@ contract Portal2Encoder is Owned(msg.sender), IEncoder {
         emit SetPortal(chainId, portal);
     }
 
-    function encode(MultichainAction calldata multichainAction, address receiverHub)
+    function encode(address receiverHub, MultichainAction calldata multichainAction)
         public
         view
         returns (Call[] memory)
