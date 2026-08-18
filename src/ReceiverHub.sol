@@ -15,9 +15,10 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
 
     /// @inheritdoc IReceiverHub
     function setDecoder(bytes4 selector, address decoder) public onlyOwner {
+        address oldDecoder = decoders[selector];
         decoders[selector] = decoder;
 
-        emit DecoderRegistered(selector, decoder);
+        emit DecoderRegistered(selector, oldDecoder, decoder);
     }
 
     /// @inheritdoc IReceiverHub

@@ -5,9 +5,14 @@ import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface ISenderHub {
     /// @notice Logged when encoder is set.
+    /// @dev When `newEncoder` is the zero address, the chain Id becomes un-set. A nonzero
+    ///      `oldEncoder` marks the replacement of a live encoder.
     /// @param chainId Chain the encoder targets.
-    /// @param encoder Encoder moudule.
-    event SetEncoder(uint256 indexed chainId, address indexed encoder);
+    /// @param oldEncoder Encoder previously set for the chain Id, or zero if none.
+    /// @param newEncoder Encoder module.
+    event SetEncoder(
+        uint256 indexed chainId, address indexed oldEncoder, address indexed newEncoder
+    );
 
     /// @notice Logged when a multichain action is sent.
     /// @param chainId Chain the action targets.
@@ -18,9 +23,14 @@ interface ISenderHub {
     );
 
     /// @notice Logged when a receiver hub is set.
-    /// @param chainId Chain where the `receiverHub` exists.
-    /// @param receiverHub Receiver hub on the remote chain.
-    event SetReceiverHub(uint256 indexed chainId, address indexed receiverHub);
+    /// @dev When `newReceiverHub` is the zero address, the chain Id becomes un-set. A nonzero
+    ///      `oldReceiverHub` marks the replacement of a live receiver hub.
+    /// @param chainId Chain where the receiver hub exists.
+    /// @param oldReceiverHub Receiver hub previously set for the chain Id, or zero if none.
+    /// @param newReceiverHub Receiver hub on the remote chain.
+    event SetReceiverHub(
+        uint256 indexed chainId, address indexed oldReceiverHub, address indexed newReceiverHub
+    );
 
     /// @notice Maps chain Id's to encoder modules.
     /// @param chainId Chain the encoder targets.

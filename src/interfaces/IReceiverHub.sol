@@ -7,10 +7,14 @@ import {Call} from "src/types/Call.sol";
 
 interface IReceiverHub {
     /// @notice Logged when a decoder is registered.
-    /// @dev When `decoder` is the zero address, the selector becomes un-set.
+    /// @dev When `newDecoder` is the zero address, the selector becomes un-set. A nonzero
+    ///      `oldDecoder` marks the replacement of a live decoder.
     /// @param selector Four byte selector used to dispatch the decoder.
-    /// @param decoder Decoder module to decode incoming messages matching the selector.
-    event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
+    /// @param oldDecoder Decoder previously registered for the selector, or zero if none.
+    /// @param newDecoder Decoder module to decode incoming messages matching the selector.
+    event DecoderRegistered(
+        bytes4 indexed selector, address indexed oldDecoder, address indexed newDecoder
+    );
 
     /// @notice Logged when a call is received.
     /// @dev The `caller` MAY NOT be a bridge. The `selector` is what dispatches the `decoder`.
