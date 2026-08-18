@@ -5,6 +5,7 @@ import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 /// @title Wormhole Encoder
@@ -48,10 +49,13 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
     /// @notice Encodes a multichain action for the Wormhole core.
     /// @dev The local Wormhole core is the same for all remote networks.
     /// @dev The payload contains the chain Id as well as the calls to make.
+    /// @dev The receiver hub argument is ignored since a published Wormhole message is not addressed
+    ///      to anyone. The Wormhole decoder is responsible for enforcing the correct receiver hub.
     /// @param multichainAction Action to send to the Receiver Hub on the remote chain.
-    function encode(MultichainAction calldata multichainAction)
+    /// @return Bridge call(s) for SenderHub to make.
+    function encode(MultichainAction calldata multichainAction, address)
         public
-        returns (address, uint256, bytes memory)
+        returns (Call[] memory)
     {
         uint256 messageFee = IWormhole(WORMHOLE).messageFee();
 
@@ -64,10 +68,12 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
 
         nonces[multichainAction.chainId] = nonce + 1;
 
-        return (
-            WORMHOLE,
-            messageFee + value,
-            abi.encodeCall(
+        Call[] memory bridgeCalls = new Call[](1);
+
+        bridgeCalls[0] = Call({
+            target: WORMHOLE,
+            value: messageFee + value,
+            data: abi.encodeCall(
                 IWormhole.publishMessage,
                 (
                     nonce,
@@ -78,6 +84,8 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
                     CONSISTENCY_LEVEL
                 )
             )
-        );
+        });
+
+        return bridgeCalls;
     }
 }

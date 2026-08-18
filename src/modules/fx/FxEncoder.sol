@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {IFxRoot} from "src/interfaces/bridges/IFxRoot.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 /// @title Polygon Fx Encoder.
@@ -12,33 +12,32 @@ contract FxEncoder is IEncoder {
     /// @notice Polygon's FxRoot.
     address public immutable FX_ROOT;
 
-    /// @notice Sender Hub.
-    address public immutable SENDER_HUB;
-
-    constructor(address fxRoot, address senderHub) {
+    constructor(address fxRoot) {
         FX_ROOT = fxRoot;
-        SENDER_HUB = senderHub;
     }
 
     /// @notice Encodes a multichain action for the Polygon FxRoot.
     /// @dev Call value MUST be zero.
     /// @param multichainAction Action to send to Polygon.
-    /// @return FxRoot contract.
-    /// @return Value to send to FxRoot.
-    /// @return Data to send to FxRoot.
-    function encode(MultichainAction calldata multichainAction)
+    /// @param receiverHub Receiver Hub on the remote chain. MUST be set on SenderHub.
+    /// @return Bridge call(s) for SenderHub to make.
+    function encode(MultichainAction calldata multichainAction, address receiverHub)
         public
         view
-        returns (address, uint256, bytes memory)
+        returns (Call[] memory)
     {
-        address receiverHub = ISenderHub(SENDER_HUB).receiverHubs(multichainAction.chainId);
+        require(receiverHub != address(0x00), InvalidReceiverHub());
 
-        return (
-            FX_ROOT,
-            0,
-            abi.encodeCall(
+        Call[] memory bridgeCalls = new Call[](1);
+
+        bridgeCalls[0] = Call({
+            target: FX_ROOT,
+            value: 0,
+            data: abi.encodeCall(
                 IFxRoot.sendMessageToChild, (receiverHub, abi.encode(multichainAction.calls))
             )
-        );
+        });
+
+        return bridgeCalls;
     }
 }
