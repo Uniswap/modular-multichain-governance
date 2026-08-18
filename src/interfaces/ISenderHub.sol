@@ -11,10 +11,20 @@ interface ISenderHub {
 
     /// @notice Logged when a multichain action is sent.
     /// @param chainId Chain the action targets.
-    /// @param bridge Bridge address to be called (returned by `encoder`).
+    /// @param bridge Bridge address called (returned by `encoder`).
     /// @param encoder Encoder module.
+    /// @param actionHash keccak256 of the action's abi-encoded calls.
     event SendMultichainAction(
-        uint256 indexed chainId, address indexed bridge, address indexed encoder
+        uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 actionHash
+    );
+
+    /// @notice Logged when a multichain action dispatch fails.
+    /// @param chainId Chain the action targets.
+    /// @param bridge Bridge returned by `encoder`, or zero if the encoder was unset or codeless.
+    /// @param encoder Encoder module (zero if unset for `chainId`).
+    /// @param actionHash keccak256 of the action's abi-encoded calls.
+    event SendMultichainActionFailed(
+        uint256 indexed chainId, address indexed bridge, address indexed encoder, bytes32 actionHash
     );
 
     /// @notice Logged when a receiver hub is set.

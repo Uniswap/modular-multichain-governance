@@ -36,18 +36,62 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
             address encoder = encoders[chainId];
+            bytes32 actionHash = keccak256(abi.encode(actions[i].calls));
 
-            Call[] memory bridgeCalls = IEncoder(encoder).encode(actions[i], receiverHubs[chainId]);
+            // Actions can fail if i) the encoder has no code, ii) the encoder reverts,
+            // iii) a bridge call fails, or iv) the encoder returns no bridge calls. A failing
+            // action does not block other succeeding actions, and every action emits at least one
+            // event. Recovery for a failed action is a follow-up proposal for that action alone.
+            if (encoder.code.length == 0) {
+                // Failure (i): the encoder has no code
+                emit SendMultichainActionFailed(chainId, address(0x00), encoder, actionHash);
 
-            // The array may hold more than one bridge call if the encoder is a composite encoder.
-            for (uint256 j; j < bridgeCalls.length; j++) {
-                address bridge = bridgeCalls[j].target;
+                continue;
+            }
 
-                (bool success,) = bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
+            try IEncoder(encoder).encode(actions[i], receiverHubs[chainId]) returns (
+                Call[] memory bridgeCalls
+            ) {
+                // Failures (iii) and (iv): see within
+                _sendBridgeCalls(chainId, encoder, actionHash, bridgeCalls);
+            } catch {
+                // Failure (ii): the encoder reverts
+                emit SendMultichainActionFailed(chainId, address(0x00), encoder, actionHash);
+            }
+        }
+    }
 
-                require(success);
+    /// @dev Makes the bridge calls for one encoded action and emits an outcome per call.
+    ///      The array may hold more than one bridge call if the encoder is a composite encoder.
+    /// @param chainId Chain the action targets.
+    /// @param encoder Encoder module that produced the bridge calls.
+    /// @param actionHash keccak256 of the action's abi-encoded calls.
+    /// @param bridgeCalls Bridge calls returned by the encoder.
+    function _sendBridgeCalls(
+        uint256 chainId,
+        address encoder,
+        bytes32 actionHash,
+        Call[] memory bridgeCalls
+    ) internal {
+        if (bridgeCalls.length == 0) {
+            // Failure (iv): the encoder returned no bridge calls
+            emit SendMultichainActionFailed(chainId, address(0x00), encoder, actionHash);
+        }
 
-                emit SendMultichainAction(chainId, bridge, encoder);
+        for (uint256 i; i < bridgeCalls.length; i++) {
+            address bridge = bridgeCalls[i].target;
+
+            bool success;
+
+            if (bridge.code.length != 0) {
+                (success,) = bridge.call{value: bridgeCalls[i].value}(bridgeCalls[i].data);
+            }
+
+            if (success) {
+                emit SendMultichainAction(chainId, bridge, encoder, actionHash);
+            } else {
+                // Failure (iii): the bridge has no code or the bridge call fails
+                emit SendMultichainActionFailed(chainId, bridge, encoder, actionHash);
             }
         }
     }
