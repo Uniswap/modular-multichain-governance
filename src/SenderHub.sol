@@ -4,6 +4,7 @@ pragma solidity 0.8.35;
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 /// @title Sender Hub.
@@ -31,19 +32,23 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
     }
 
     /// @inheritdoc ISenderHub
-    function sendMultichainActions(MultichainAction[] calldata actions) public onlyOwner {
+    function sendMultichainActions(MultichainAction[] calldata actions) public payable onlyOwner {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
             address encoder = encoders[chainId];
 
-            (address bridge, uint256 value, bytes memory data) =
-                IEncoder(encoder).encode(actions[i]);
+            Call[] memory bridgeCalls = IEncoder(encoder).encode(actions[i], receiverHubs[chainId]);
 
-            (bool success,) = bridge.call{value: value}(data);
+            // The array may hold more than one bridge call if the encoder is a composite encoder.
+            for (uint256 j; j < bridgeCalls.length; j++) {
+                address bridge = bridgeCalls[j].target;
 
-            require(success);
+                (bool success,) = bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
 
-            emit SendMultichainAction(chainId, bridge, encoder);
+                require(success);
+
+                emit SendMultichainAction(chainId, bridge, encoder);
+            }
         }
     }
 }

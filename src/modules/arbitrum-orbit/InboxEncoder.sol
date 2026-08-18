@@ -2,10 +2,9 @@
 pragma solidity 0.8.35;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {ISenderHub} from "src/interfaces/ISenderHub.sol";
 import {IInbox} from "src/interfaces/bridges/IInbox.sol";
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {IArbitrumCalls} from "src/modules/arbitrum-orbit/IArbitrumCalls.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -27,10 +26,6 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
     /// @dev For gas refunds.
     address public immutable TIMELOCK;
 
-    /// @notice Sender Hub.
-    /// @dev For querying respective Receiver Hub.
-    address public immutable SENDER_HUB;
-
     /// @notice Gas limit.
     uint256 public gasLimit;
 
@@ -43,9 +38,8 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
     /// @notice Maps chain Id's to Arbitrum Orbit Inboxes.
     mapping(uint256 chainId => address) public inboxes;
 
-    constructor(address timelock, address senderHub) {
+    constructor(address timelock) {
         TIMELOCK = timelock;
-        SENDER_HUB = senderHub;
     }
 
     /// @notice Sets gas parameters.
@@ -78,17 +72,17 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
     /// @dev The value is the sum of all call values and the gas parameters.
     /// @dev The data is an array of calls behind an `arbitrumCall` function selector.
     /// @param multichainAction Action to send to the Arbitrum Orbit chain.
-    /// @return Inbox contract.
-    /// @return Value to send to Inbox.
-    /// @return Data to send to Inbox.
-    function encode(MultichainAction calldata multichainAction)
+    /// @param receiverHub Receiver Hub on the remote chain. MUST be set on SenderHub.
+    /// @return Bridge call(s) for SenderHub to make.
+    function encode(MultichainAction calldata multichainAction, address receiverHub)
         public
         view
-        returns (address, uint256, bytes memory)
+        returns (Call[] memory)
     {
+        require(receiverHub != address(0x00), InvalidReceiverHub());
+
         address inbox = inboxes[multichainAction.chainId];
 
-        address receiverHub = ISenderHub(SENDER_HUB).receiverHubs(multichainAction.chainId);
         uint256 value = 0;
 
         for (uint256 i; i < multichainAction.calls.length; i++) {
@@ -97,10 +91,12 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
 
         value += (gasLimit * maxFeePerGas) + maxSubmissionCost;
 
-        return (
-            inbox,
-            value,
-            abi.encodeCall(
+        Call[] memory bridgeCalls = new Call[](1);
+
+        bridgeCalls[0] = Call({
+            target: inbox,
+            value: value,
+            data: abi.encodeCall(
                 IInbox.createRetryableTicket,
                 (
                     receiverHub,
@@ -110,9 +106,11 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
                     TIMELOCK,
                     gasLimit,
                     maxFeePerGas,
-                    abi.encodeCall(IBridgeCalls.arbitrumCall, (multichainAction.calls))
+                    abi.encodeCall(IArbitrumCalls.arbitrumCall, (multichainAction.calls))
                 )
             )
-        );
+        });
+
+        return bridgeCalls;
     }
 }

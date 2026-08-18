@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.35;
 
-import {IBridgeCalls} from "src/interfaces/modules/IBridgeCalls.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
+import {IPortal2Calls} from "src/modules/optimism-portal2/IPortal2Calls.sol";
 import {Call} from "src/types/Call.sol";
 import {CalldataHandler} from "src/util/CalldataHandler.sol";
-import {DecoderError} from "src/util/Errors.sol";
 
 contract Portal2Decoder is IDecoder {
     /// @dev Op Stack chain's Alias system.
@@ -27,13 +26,13 @@ contract Portal2Decoder is IDecoder {
     /// @param data Encoded `portal2Call` function.
     /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
-        require(msg.sender == RECEIVER_HUB, DecoderError.CallerNotReceiverHub());
-        require(removeAlias(caller) == SENDER_HUB, DecoderError.NotFromSenderHub());
+        require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
+        require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
 
         bytes4 selector = CalldataHandler.getSelector(data);
-        require(selector == IBridgeCalls.portal2Call.selector, DecoderError.InvalidSelector());
+        require(selector == IPortal2Calls.portal2Call.selector, InvalidSelector());
 
-        bytes memory encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
 
         return calls;
