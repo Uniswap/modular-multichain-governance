@@ -5,7 +5,6 @@ import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IArbitrumCalls} from "src/modules/arbitrum-orbit/IArbitrumCalls.sol";
 import {Call} from "src/types/Call.sol";
 
-
 /// @title Arbitrum Orbit Inbox Decoder
 /// @notice Decodes messages on Arbitrum Orbit chains.
 contract InboxDecoder is IDecoder {

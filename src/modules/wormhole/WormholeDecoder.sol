@@ -7,7 +7,6 @@ import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {WormholeError} from "src/modules/wormhole/WormholeError.sol";
 import {Call} from "src/types/Call.sol";
 
-
 /// @title Wormhole Decoder
 /// @notice Decodes Wormhole "Verifiable Message" messages.
 contract WormholeDecoder is IDecoder {

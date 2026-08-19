@@ -5,7 +5,6 @@ import {IFxMessageProcessor} from "src/interfaces/bridges/IFxMessageProcessor.so
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 
-
 /// @title Polygon Fx Decoder.
 /// @notice Decodes message on Polygon from the FxRoot to FxChild system.
 contract FxDecoder is IDecoder {

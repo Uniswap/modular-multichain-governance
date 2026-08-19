@@ -5,7 +5,6 @@ import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IPortal2Calls} from "src/modules/optimism-portal2/IPortal2Calls.sol";
 import {Call} from "src/types/Call.sol";
 
-
 contract Portal2Decoder is IDecoder {
     /// @dev Op Stack chain's Alias system.
     uint160 internal constant OP_STACK_ALIAS = uint160(0x1111000000000000000000000000000000001111);
