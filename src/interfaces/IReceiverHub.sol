@@ -12,6 +12,11 @@ interface IReceiverHub {
     /// @param decoder Decoder module to decode incoming messages matching the selector.
     event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
 
+    /// @notice Logged when an interface ID is supported.
+    /// @param interfaceId Interface ID to set.
+    /// @param support True if the interface is supported.
+    event SetSupportsInterface(bytes4 indexed interfaceId, bool support);
+
     /// @notice Logged when a call is received.
     /// @dev The `caller` MAY NOT be a bridge. The `selector` is what dispatches the `decoder`.
     /// @param caller Caller, which may be a bridge contract or a relayer account.
@@ -24,10 +29,20 @@ interface IReceiverHub {
     /// @return Decoder module.
     function decoders(bytes4 selector) external view returns (address);
 
+    /// @notice Sets whether an interface is supported.
+    /// @param interfaceId Interface ID to set.
+    /// @return True if the interface is supported.
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+
     /// @notice Sets the selector-decoder pair.
     /// @param selector Selector to use in dispatching.
     /// @param decoder Decoder module to be dispatched.
     function setDecoder(bytes4 selector, address decoder) external;
+
+    /// @notice Sets whether an interface is supported.
+    /// @param interfaceId Interface ID to set.
+    /// @param support True if the interface is supported.
+    function setSupportsInterface(bytes4 interfaceId, bool support) external;
 
     /// @notice Captures bridge messages and dispatches a decoder.
     fallback() external payable;

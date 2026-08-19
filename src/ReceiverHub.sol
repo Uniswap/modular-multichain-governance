@@ -14,10 +14,20 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
     mapping(bytes4 selector => address) public decoders;
 
     /// @inheritdoc IReceiverHub
+    mapping(bytes4 interfaceId => bool) public supportsInterface;
+
+    /// @inheritdoc IReceiverHub
     function setDecoder(bytes4 selector, address decoder) public onlyOwner {
         decoders[selector] = decoder;
 
         emit DecoderRegistered(selector, decoder);
+    }
+
+    /// @inheritdoc IReceiverHub
+    function setSupportsInterface(bytes4 interfaceId, bool support) public onlyOwner {
+        supportsInterface[interfaceId] = support;
+
+        emit SetSupportsInterface(interfaceId, support);
     }
 
     /// @inheritdoc IReceiverHub
