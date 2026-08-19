@@ -8,6 +8,8 @@ import {
 } from "src/modules/ccip/IAny2EVMMessageReceiver.sol";
 import {Call} from "src/types/Call.sol";
 
+/// @title Chainlink CCIP Decoder
+/// @notice Decodes messages from CCIP Router.
 contract CCIPDecoder is IDecoder {
     /// @notice Sender Hub on Ethereum.
     address public immutable SENDER_HUB;
@@ -29,6 +31,10 @@ contract CCIPDecoder is IDecoder {
         ROUTER = router;
     }
 
+    /// @notice Decodes a message from Chainlink CCIP's Router contract.
+    /// @param caller Account that called the Receiver Hub. MUST be the Router.
+    /// @param data Data encoded in `ccipReceive` from Router.
+    /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(caller == ROUTER);
