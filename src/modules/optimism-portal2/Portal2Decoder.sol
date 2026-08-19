@@ -4,7 +4,7 @@ pragma solidity 0.8.35;
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IPortal2Calls} from "src/modules/optimism-portal2/IPortal2Calls.sol";
 import {Call} from "src/types/Call.sol";
-import {CalldataHandler} from "src/util/CalldataHandler.sol";
+
 
 contract Portal2Decoder is IDecoder {
     /// @dev Op Stack chain's Alias system.
@@ -29,10 +29,10 @@ contract Portal2Decoder is IDecoder {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
 
-        bytes4 selector = CalldataHandler.getSelector(data);
+        bytes4 selector = bytes4(data[:4]);
         require(selector == IPortal2Calls.portal2Call.selector, InvalidSelector());
 
-        bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedCalls = data[4:];
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
 
         return calls;

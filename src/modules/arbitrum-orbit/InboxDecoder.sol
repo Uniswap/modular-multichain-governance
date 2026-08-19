@@ -4,7 +4,7 @@ pragma solidity 0.8.35;
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IArbitrumCalls} from "src/modules/arbitrum-orbit/IArbitrumCalls.sol";
 import {Call} from "src/types/Call.sol";
-import {CalldataHandler} from "src/util/CalldataHandler.sol";
+
 
 /// @title Arbitrum Orbit Inbox Decoder
 /// @notice Decodes messages on Arbitrum Orbit chains.
@@ -30,11 +30,12 @@ contract InboxDecoder is IDecoder {
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
+        require(data.length >= 4, CalldataTooShort());
 
-        bytes4 selector = CalldataHandler.getSelector(data);
+        bytes4 selector = bytes4(data[:4]);
         require(selector == IArbitrumCalls.arbitrumCall.selector, InvalidSelector());
 
-        bytes calldata encodedCalls = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedCalls = data[4:];
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
 
         return calls;

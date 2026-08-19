@@ -6,7 +6,7 @@ import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {WormholeError} from "src/modules/wormhole/WormholeError.sol";
 import {Call} from "src/types/Call.sol";
-import {CalldataHandler} from "src/util/CalldataHandler.sol";
+
 
 /// @title Wormhole Decoder
 /// @notice Decodes Wormhole "Verifiable Message" messages.
@@ -43,10 +43,10 @@ contract WormholeDecoder is IDecoder {
     function decode(address, bytes calldata data) public returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
 
-        bytes4 selector = CalldataHandler.getSelector(data);
+        bytes4 selector = bytes4(data[:4]);
         require(selector == IWormholeCalls.wormholeCall.selector, InvalidSelector());
 
-        bytes calldata encodedWormholeMessage = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedWormholeMessage = data[4:];
         bytes memory wormholeMessage = abi.decode(encodedWormholeMessage, (bytes));
 
         (VerifiableMessage memory vm, bool valid, string memory reason) =

@@ -4,7 +4,7 @@ pragma solidity 0.8.35;
 import {IFxMessageProcessor} from "src/interfaces/bridges/IFxMessageProcessor.sol";
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
-import {CalldataHandler} from "src/util/CalldataHandler.sol";
+
 
 /// @title Polygon Fx Decoder.
 /// @notice Decodes message on Polygon from the FxRoot to FxChild system.
@@ -32,12 +32,12 @@ contract FxDecoder is IDecoder {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(caller == FX_CHILD, InvalidReceiverHubCaller());
 
-        bytes4 selector = CalldataHandler.getSelector(data);
+        bytes4 selector = bytes4(data[:4]);
         require(selector == IFxMessageProcessor.processMessageFromRoot.selector, InvalidSelector());
 
-        bytes calldata dataWithoutSelector = CalldataHandler.getCalldataWithoutSelector(data);
+        bytes calldata encodedMessageFromRoot = data[4:];
         (, address rootMessageSender, bytes memory encodedCalls) =
-            abi.decode(dataWithoutSelector, (uint256, address, bytes));
+            abi.decode(encodedMessageFromRoot, (uint256, address, bytes));
         require(rootMessageSender == SENDER_HUB, NotFromSenderHub());
 
         Call[] memory calls = abi.decode(encodedCalls, (Call[]));
