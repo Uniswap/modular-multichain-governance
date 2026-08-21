@@ -26,12 +26,16 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
     /// @notice Wormhole core on Ethereum.
     address public immutable WORMHOLE;
 
+    /// @notice Sender Hub on Ethereum.
+    address public immutable SENDER_HUB;
+
     /// @notice Maps chain Id's to nonces.
     /// @dev Tracking nonces per-chain enables strict sequencing for the Wormhole Decoders.
-    mapping(uint256 chainId => uint32) public nonces;
+    mapping(uint256 chainId => uint256) public nonces;
 
-    constructor(address wormhole) {
+    constructor(address wormhole, address senderHub) {
         WORMHOLE = wormhole;
+        SENDER_HUB = senderHub;
     }
 
     /// @notice Sets the nonce for a given chain Id directly.
@@ -57,6 +61,8 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
         public
         returns (Call[] memory)
     {
+        require(msg.sender == SENDER_HUB);
+
         uint256 messageFee = IWormhole(WORMHOLE).messageFee();
 
         uint256 value = 0;
@@ -64,7 +70,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
             value += multichainAction.calls[i].value;
         }
 
-        uint32 nonce = nonces[multichainAction.chainId];
+        uint256 nonce = nonces[multichainAction.chainId];
 
         nonces[multichainAction.chainId] = nonce + 1;
 
@@ -76,10 +82,10 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
             data: abi.encodeCall(
                 IWormhole.publishMessage,
                 (
-                    nonce,
+                    0,
                     abi.encodeCall(
                         IWormholeCalls.wormholeCall,
-                        abi.encode(multichainAction.chainId, multichainAction.calls)
+                        abi.encode(nonce, multichainAction.chainId, multichainAction.calls)
                     ),
                     CONSISTENCY_LEVEL
                 )
