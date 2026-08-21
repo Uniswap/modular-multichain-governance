@@ -33,7 +33,7 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
     /// @inheritdoc IReceiverHub
     fallback() external payable {
         address decoder = decoders[msg.sig];
-        require(address(decoder) != address(0x00));
+        require(address(decoder) != address(0x00), NoDecoderForSelector(msg.sig));
 
         Call[] memory calls = IDecoder(decoder).decode(msg.sender, msg.data);
 
@@ -44,7 +44,7 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
 
             (bool success,) = target.call{value: value}(data);
 
-            require(success);
+            require(success, CallFail(target, value, data));
         }
 
         emit CallsReceived(msg.sender, msg.sig, decoder);

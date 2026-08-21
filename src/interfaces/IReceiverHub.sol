@@ -6,6 +6,16 @@ import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
 import {Call} from "src/types/Call.sol";
 
 interface IReceiverHub {
+    /// @notice Thrown when a decoder is not set for the given selector.
+    /// @param selector The selector not matched.
+    error NoDecoderForSelector(bytes4 selector);
+
+    /// @notice Thrown when a call fails.
+    /// @param target Target contract that threw.
+    /// @param value Value of the call.
+    /// @param data Data sent to target.
+    error CallFail(address target, uint256 value, bytes data);
+
     /// @notice Logged when a decoder is registered.
     /// @dev When `decoder` is the zero address, the selector becomes un-set.
     /// @param selector Four byte selector used to dispatch the decoder.
