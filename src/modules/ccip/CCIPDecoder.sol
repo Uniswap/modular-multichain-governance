@@ -2,6 +2,7 @@
 pragma solidity 0.8.35;
 
 import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
+import {CCIPError} from "src/modules/ccip/CCIPError.sol";
 import {
     Any2EVMMessage,
     IAny2EVMMessageReceiver
@@ -37,7 +38,7 @@ contract CCIPDecoder is IDecoder {
     /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
-        require(caller == ROUTER);
+        require(caller == ROUTER, CCIPError.ReceiverHubCallerNotRouter());
         require(data.length >= 4, CalldataTooShort());
 
         bytes4 selector = bytes4(data[:4]);
@@ -46,8 +47,8 @@ contract CCIPDecoder is IDecoder {
         bytes calldata encodedAny2EVMMessage = data[4:];
         Any2EVMMessage memory message = abi.decode(encodedAny2EVMMessage, (Any2EVMMessage));
 
-        require(message.sourceChainSelector == L1_CHAIN_SELECTOR);
-        require(abi.decode(message.sender, (address)) == SENDER_HUB);
+        require(message.sourceChainSelector == L1_CHAIN_SELECTOR, CCIPError.InvalidSourceChain());
+        require(abi.decode(message.sender, (address)) == SENDER_HUB, NotFromSenderHub());
 
         return abi.decode(message.data, (Call[]));
     }
