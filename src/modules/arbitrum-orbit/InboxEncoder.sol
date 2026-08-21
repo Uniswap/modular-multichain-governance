@@ -89,13 +89,13 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
             value += multichainAction.calls[i].value;
         }
 
-        value += (gasLimit * maxFeePerGas) + maxSubmissionCost;
+        uint256 gasValue = (gasLimit * maxFeePerGas) + maxSubmissionCost;
 
         Call[] memory bridgeCalls = new Call[](1);
 
         bridgeCalls[0] = Call({
             target: inbox,
-            value: value,
+            value: value + gasValue,
             data: abi.encodeCall(
                 IInbox.createRetryableTicket,
                 (
