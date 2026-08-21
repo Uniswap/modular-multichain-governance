@@ -8,6 +8,10 @@ interface IEncoder {
     /// @notice Thrown when a receiver hub required by the module is not set.
     error InvalidReceiverHub();
 
+    /// @notice Thrown when the call value is invalid.
+    /// @dev This handles the case where some bridges disallow non-zero call values in messages.
+    error InvalidCallValue();
+
     /// @notice Encodes a multi-chain action into bridge calls for SenderHub to make.
     /// @dev This ensures the sender of every message is always SenderHub, rather than the modules.
     /// @param receiverHub Receiver Hub on the action's target chain, as configured on SenderHub.

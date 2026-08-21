@@ -52,6 +52,12 @@ contract CCIPEncoder is Owned(msg.sender), IEncoder {
         view
         returns (Call[] memory)
     {
+        require(receiverHub != address(0x00), InvalidReceiverHub());
+
+        for (uint256 i; i < multichainAction.calls.length; ++i) {
+            require(multichainAction.calls[i].value == 0, InvalidCallValue());
+        }
+
         uint256 gasLimit = estimateGas(multichainAction);
         uint64 targetChainSelector = ccipChainSelectors[multichainAction.chainId];
 

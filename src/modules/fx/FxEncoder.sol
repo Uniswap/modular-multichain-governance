@@ -28,6 +28,10 @@ contract FxEncoder is IEncoder {
     {
         require(receiverHub != address(0x00), InvalidReceiverHub());
 
+        for (uint256 i; i < multichainAction.calls.length; ++i) {
+            require(multichainAction.calls[i].value == 0, InvalidCallValue());
+        }
+
         Call[] memory bridgeCalls = new Call[](1);
 
         bridgeCalls[0] = Call({
