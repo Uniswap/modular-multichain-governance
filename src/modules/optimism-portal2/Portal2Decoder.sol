@@ -27,6 +27,7 @@ contract Portal2Decoder is IDecoder {
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(removeAlias(caller) == SENDER_HUB, NotFromSenderHub());
+        require(data.length >= 4, CalldataTooShort());
 
         bytes4 selector = bytes4(data[:4]);
         require(selector == IPortal2Calls.portal2Call.selector, InvalidSelector());

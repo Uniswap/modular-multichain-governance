@@ -30,6 +30,7 @@ contract FxDecoder is IDecoder {
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(caller == FX_CHILD, InvalidReceiverHubCaller());
+        require(data.length >= 4, CalldataTooShort());
 
         bytes4 selector = bytes4(data[:4]);
         require(selector == IFxMessageProcessor.processMessageFromRoot.selector, InvalidSelector());
