@@ -38,6 +38,8 @@ contract Portal2Encoder is Owned(msg.sender), IEncoder {
 
         address portal = portals[multichainAction.chainId];
 
+        require(portal != address(0x00), BridgeNotSet());
+
         uint256 value = 0;
 
         for (uint256 i; i < multichainAction.calls.length; i++) {

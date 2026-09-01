@@ -83,6 +83,8 @@ contract InboxEncoder is Owned(msg.sender), IEncoder {
 
         address inbox = inboxes[multichainAction.chainId];
 
+        require(inbox != address(0x00), BridgeNotSet());
+
         uint256 value = 0;
 
         for (uint256 i; i < multichainAction.calls.length; i++) {

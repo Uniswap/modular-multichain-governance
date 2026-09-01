@@ -12,6 +12,14 @@ interface IEncoder {
     /// @dev This handles the case where some bridges disallow non-zero call values in messages.
     error InvalidCallValue();
 
+    /// @notice Thrown when a bridge is not set.
+    /// @dev This handles encoders tracks the bridge address in storage and the address is unset.
+    error BridgeNotSet();
+
+    /// @notice Thrown when the caller is not the sender hub.
+    /// @dev This handles encoders that have stateful `encode` functions gated to the sender hub.
+    error NotSenderHub();
+
     /// @notice Encodes a multi-chain action into bridge calls for SenderHub to make.
     /// @dev This ensures the sender of every message is always SenderHub, rather than the modules.
     /// @param receiverHub Receiver Hub on the action's target chain, as configured on SenderHub.

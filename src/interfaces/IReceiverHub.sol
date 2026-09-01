@@ -12,15 +12,14 @@ interface IReceiverHub {
 
     /// @notice Thrown when a call fails.
     /// @param target Target contract that threw.
-    /// @param value Value of the call.
-    /// @param data Data sent to target.
-    error CallFail(address target, uint256 value, bytes data);
+    /// @param revertData Data reverted.
+    error CallFail(address target, bytes revertData);
 
-    /// @notice Logged when a decoder is registered.
+    /// @notice Logged when a decoder is set.
     /// @dev When `decoder` is the zero address, the selector becomes un-set.
     /// @param selector Four byte selector used to dispatch the decoder.
     /// @param decoder Decoder module to decode incoming messages matching the selector.
-    event DecoderRegistered(bytes4 indexed selector, address indexed decoder);
+    event SetDecoder(bytes4 indexed selector, address indexed decoder);
 
     /// @notice Logged when an interface ID is supported.
     /// @param interfaceId Interface ID to set.

@@ -20,7 +20,7 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
     function setDecoder(bytes4 selector, address decoder) public onlyOwner {
         decoders[selector] = decoder;
 
-        emit DecoderRegistered(selector, decoder);
+        emit SetDecoder(selector, decoder);
     }
 
     /// @inheritdoc IReceiverHub
@@ -42,9 +42,9 @@ contract ReceiverHub is Owned(msg.sender), IReceiverHub {
             uint256 value = calls[i].value;
             bytes memory data = calls[i].data;
 
-            (bool success,) = target.call{value: value}(data);
+            (bool success, bytes memory returnedData) = target.call{value: value}(data);
 
-            require(success, CallFail(target, value, data));
+            require(success, CallFail(target, returnedData));
         }
 
         emit CallsReceived(msg.sender, msg.sig, decoder);

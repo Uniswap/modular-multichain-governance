@@ -4,9 +4,14 @@ pragma solidity 0.8.35;
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface ISenderHub {
+    /// @notice Thrown when a bridge call fails.
+    /// @param bridge Bridge that threw.
+    /// @param revertData Data reverted.
+    error CallFail(address bridge, bytes revertData);
+
     /// @notice Logged when encoder is set.
     /// @param chainId Chain the encoder targets.
-    /// @param encoder Encoder moudule.
+    /// @param encoder Encoder module.
     event SetEncoder(uint256 indexed chainId, address indexed encoder);
 
     /// @notice Logged when a multichain action is sent.

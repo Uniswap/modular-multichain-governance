@@ -7,6 +7,20 @@ struct EVMTokenAmount {
     uint256 amount;
 }
 
+/// @dev Data to receive from Ethereum on target chain.
+/// @param messageId Unique identifier for the message.
+/// @param sourceChainSelector Chainlink-defined selector for source chain (Always Ethereum).
+/// @param sender Sender address, encoded via `abi.encode(address(sender))`.
+/// @param data Data as forwarded from `EVM2AnyMessage`.
+/// @param destTokenAmounts Always empty, no token transfers.
+struct Any2EVMMessage {
+    bytes32 messageId;
+    uint64 sourceChainSelector;
+    bytes sender;
+    bytes data;
+    EVMTokenAmount[] destTokenAmounts;
+}
+
 /// @dev Data to send from Ethereum to target chain.
 /// @param receiver Receiver contact on target chain.
 /// @param data Encoded data sent to receiver (this is wrapped in `Any2EVMMEssage`).

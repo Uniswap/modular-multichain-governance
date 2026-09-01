@@ -43,9 +43,10 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
             for (uint256 j; j < bridgeCalls.length; j++) {
                 address bridge = bridgeCalls[j].target;
 
-                (bool success,) = bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
+                (bool success, bytes memory data) =
+                    bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
 
-                require(success);
+                require(success, CallFail(bridge, data));
 
                 emit SendMultichainAction(chainId, bridge, encoder);
             }

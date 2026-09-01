@@ -61,13 +61,12 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
         public
         returns (Call[] memory)
     {
-        require(msg.sender == SENDER_HUB);
+        require(msg.sender == SENDER_HUB, NotSenderHub());
 
         uint256 messageFee = IWormhole(WORMHOLE).messageFee();
 
-        uint256 value = 0;
         for (uint256 i; i < multichainAction.calls.length; i++) {
-            value += multichainAction.calls[i].value;
+            require(multichainAction.calls[i].value == 0, InvalidCallValue());
         }
 
         uint256 nonce = nonces[multichainAction.chainId];
@@ -78,7 +77,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
 
         bridgeCalls[0] = Call({
             target: WORMHOLE,
-            value: messageFee + value,
+            value: messageFee,
             data: abi.encodeCall(
                 IWormhole.publishMessage,
                 (
