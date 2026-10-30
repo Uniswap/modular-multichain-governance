@@ -1,5 +1,7 @@
 # Modular Multichain Governance
 
+> NOTICE: The codebase is currently **not-audited** and is not ready for production usage.
+
 Modular Multichain Governance is a system to pass messages from Ethereum L1 to L2's and other L1's
 based on Uniswap governance decisions.
 
