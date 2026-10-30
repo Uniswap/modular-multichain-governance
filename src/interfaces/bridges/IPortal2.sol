@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.35;
+pragma solidity ^0.8.37;
 
 interface IPortal2 {
     /// @notice Creates a deposit transaction to send on OP Stack chains.
