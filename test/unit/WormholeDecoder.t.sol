@@ -22,7 +22,7 @@ contract WormholeDecoderTest is Test {
     address internal callTargetB = vm.addr(6);
     address internal callTargetC = vm.addr(7);
 
-    uint256 internal constant MSG_TIMEOUT = 2 days;
+    uint256 internal constant MSG_TIMEOUT = 14 days;
     uint32 internal constant MESSAGE_TIMESTAMP = 1000;
 
     uint8 internal constant VERSION = 1;

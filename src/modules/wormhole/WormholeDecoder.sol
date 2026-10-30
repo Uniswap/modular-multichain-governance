@@ -14,7 +14,7 @@ contract WormholeDecoder is IDecoder {
     uint16 constant ETH_WORMHOLE_CHAIN_ID = 2;
 
     /// @notice Message timeout.
-    uint256 constant MSG_TIMEOUT = 2 days;
+    uint256 constant MSG_TIMEOUT = 14 days;
 
     /// @notice Sender Hub on Ethereum.
     address public immutable SENDER_HUB;

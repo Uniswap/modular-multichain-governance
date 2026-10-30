@@ -32,8 +32,8 @@ contract WormholeDecoderFuzzTest is Test {
     address internal senderHub = vm.addr(100);
     address internal fixedReceiverHub = vm.addr(101);
 
-    uint256 internal constant MSG_TIMEOUT = 2 days;
-    uint256 internal constant REFERENCE_TIMESTAMP = 1_000_000;
+    uint256 internal constant MSG_TIMEOUT = 14 days;
+    uint256 internal constant REFERENCE_TIMESTAMP = 10_000_000;
 
     uint8 internal constant VERSION = 1;
     uint8 internal constant CONSISTENCY_LEVEL = 1;
