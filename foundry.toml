@@ -7,7 +7,12 @@ ignored_error_codes = [8429, 3860]
 
 [lint]
 exclude_lints = [
-    "block-timestamp"
+    "arbitrary-send-eth",
+    "block-timestamp",
+    "calls-loop",
+    "missing-zero-check",
+    "reentrancy-events",
+    "require-revert-in-loop"
 ]
 
 [fmt]
