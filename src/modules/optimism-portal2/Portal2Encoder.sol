@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.35;
+pragma solidity ^0.8.37;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IPortal2} from "src/interfaces/bridges/IPortal2.sol";
