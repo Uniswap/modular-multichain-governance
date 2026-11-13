@@ -3,7 +3,14 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+# ignoring warnings:
+#
+# - 8429: "Virtual modifiers are deprecated and scheduled for removal" in solmate/auth/Owned
+# - 3860: ".. This contract may not be deployable on Mainnet. .." in test/unit/
 ignored_error_codes = [8429, 3860]
+
+# ignoring mocks in coverage checks
+no_match_coverage = "test/mocks/"
 
 [lint]
 exclude_lints = [
