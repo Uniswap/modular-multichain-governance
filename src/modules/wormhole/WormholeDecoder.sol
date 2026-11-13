@@ -25,9 +25,6 @@ contract WormholeDecoder is IDecoder {
     /// @notice Wormhole core on local chain.
     address public immutable WORMHOLE;
 
-    /// @notice Nonce for message sequencing.
-    uint256 public nonce;
-
     constructor(address senderHub, address receiverHub, address wormhole) {
         SENDER_HUB = senderHub;
         RECEIVER_HUB = receiverHub;
@@ -39,9 +36,10 @@ contract WormholeDecoder is IDecoder {
     /// @dev Verification and message format is checked by Wormhole core.
     /// @dev `vm.emitterChainId` refers to the Wormhole-defined "chainId" system, which is separate
     ///      from the EIP-155 chain Id. The `receiverChainId` refers to the EIP-155 chain Id.
+    /// @dev The payload's leading message Id is decoded but not checked.
     /// @param data Encoded `wormholeCall` function.
     /// @return Decoded call array.
-    function decode(address, bytes calldata data) public returns (Call[] memory) {
+    function decode(address, bytes calldata data) public view returns (Call[] memory) {
         require(msg.sender == RECEIVER_HUB, CallerNotReceiverHub());
         require(data.length >= 4, CalldataTooShort());
 
@@ -59,12 +57,9 @@ contract WormholeDecoder is IDecoder {
         require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, WormholeError.NotFromEthereum());
         require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, WormholeError.Expired());
 
-        (uint256 sentNonce, uint256 receiverChainId, Call[] memory calls) =
+        (, uint256 receiverChainId, Call[] memory calls) =
             abi.decode(vm.payload, (uint256, uint256, Call[]));
-        require(sentNonce == nonce, WormholeError.InvalidNonce());
         require(receiverChainId == block.chainid, WormholeError.NotToThisChain());
-
-        nonce += 1;
 
         return calls;
     }

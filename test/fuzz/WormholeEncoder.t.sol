@@ -10,63 +10,27 @@ import {MultichainAction} from "src/types/MultichainAction.sol";
 import {MockWormhole} from "test/mocks/MockWormhole.sol";
 
 contract WormholeEncoderFuzzTest is Test {
-    address internal admin = vm.addr(102);
-
-    function testFuzzEmergencySetNonce(
-        address senderHub,
-        address owner,
-        address caller,
-        bool callerIsOwner,
-        uint256 chainId,
-        uint32 nonce
-    ) public {
-        if (callerIsOwner) caller = owner;
-        else if (caller == owner) caller = address(uint160(caller) ^ 1);
-
-        vm.assume(owner != VM_ADDRESS && caller != VM_ADDRESS);
-
-        MockWormhole wormhole = new MockWormhole();
-
-        vm.prank(owner);
-        WormholeEncoder encoder = new WormholeEncoder(address(wormhole), senderHub);
-
-        if (caller == owner) {
-            vm.expectEmit(address(encoder));
-            emit WormholeEncoder.EmergencySetNonce(chainId, nonce);
-
-            vm.prank(caller);
-            encoder.emergencySetNonce(chainId, nonce);
-
-            assertEq(encoder.nonces(chainId), nonce);
-        } else {
-            vm.prank(caller);
-            vm.expectRevert("UNAUTHORIZED");
-            encoder.emergencySetNonce(chainId, nonce);
-
-            assertEq(encoder.nonces(chainId), 0);
-        }
-    }
-
     function testFuzzEncode(
         address senderHub,
         address receiverHub,
         uint256 chainId,
         uint256 messageFee,
-        uint32 startNonce,
+        uint256 lastMessageId,
         uint256 callCount
     ) public {
         messageFee = bound(messageFee, 0, 100 ether);
-        startNonce = uint32(bound(startNonce, 0, type(uint32).max - 1));
+        lastMessageId = bound(lastMessageId, 0, type(uint256).max - 1);
         callCount = bound(callCount, 0, 8);
 
         MockWormhole wormhole = new MockWormhole();
         wormhole.setMessageFee(messageFee);
 
-        vm.prank(admin);
         WormholeEncoder encoder = new WormholeEncoder(address(wormhole), senderHub);
 
-        vm.prank(admin);
-        encoder.emergencySetNonce(chainId, startNonce);
+        // `messageId` is the only mutable storage variable on the encoder, so it occupies slot 0.
+        vm.store(address(encoder), bytes32(0), bytes32(lastMessageId));
+
+        assertEq(encoder.messageId(), lastMessageId);
 
         MultichainAction memory action;
         action.chainId = chainId;
@@ -86,10 +50,40 @@ contract WormholeEncoderFuzzTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (uint32(0), abi.encode(uint256(startNonce), chainId, action.calls), uint8(1))
+                (uint32(0), abi.encode(lastMessageId + 1, chainId, action.calls), uint8(1))
             )
         );
-        assertEq(encoder.nonces(chainId), uint256(startNonce) + 1);
+        assertEq(encoder.messageId(), lastMessageId + 1);
+    }
+
+    function testFuzzEncodeMessageIdSharedAcrossChains(
+        address senderHub,
+        address receiverHub,
+        uint256[] calldata chainIds
+    ) public {
+        uint256 messageCount = bound(chainIds.length, 0, 8);
+
+        MockWormhole wormhole = new MockWormhole();
+        WormholeEncoder encoder = new WormholeEncoder(address(wormhole), senderHub);
+
+        MultichainAction memory action;
+        action.calls = new Call[](0);
+
+        for (uint256 i; i < messageCount; i++) {
+            action.chainId = chainIds[i];
+
+            vm.prank(senderHub);
+            Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
+
+            assertEq(
+                bridgeCalls[0].data,
+                abi.encodeCall(
+                    IWormhole.publishMessage,
+                    (uint32(0), abi.encode(i + 1, chainIds[i], action.calls), uint8(1))
+                )
+            );
+            assertEq(encoder.messageId(), i + 1);
+        }
     }
 
     function testFuzzEncodeInvalidCallValue(
@@ -106,7 +100,6 @@ contract WormholeEncoderFuzzTest is Test {
 
         MockWormhole wormhole = new MockWormhole();
 
-        vm.prank(admin);
         WormholeEncoder encoder = new WormholeEncoder(address(wormhole), senderHub);
 
         MultichainAction memory action;
@@ -122,7 +115,7 @@ contract WormholeEncoderFuzzTest is Test {
         vm.expectRevert(IEncoder.InvalidCallValue.selector);
         encoder.encode(receiverHub, action);
 
-        assertEq(encoder.nonces(chainId), 0);
+        assertEq(encoder.messageId(), 0);
     }
 
     function testFuzzEncodeCallerNotSenderHub(
@@ -138,7 +131,6 @@ contract WormholeEncoderFuzzTest is Test {
         vm.assume(senderHub != VM_ADDRESS && caller != VM_ADDRESS);
 
         MockWormhole wormhole = new MockWormhole();
-        vm.prank(admin);
         WormholeEncoder encoder = new WormholeEncoder(address(wormhole), senderHub);
 
         MultichainAction memory action;
@@ -151,11 +143,11 @@ contract WormholeEncoderFuzzTest is Test {
 
         if (caller == senderHub) {
             assertTrue(success);
-            assertEq(encoder.nonces(chainId), 1);
+            assertEq(encoder.messageId(), 1);
         } else {
             assertFalse(success);
             assertEq(returnData, abi.encodeWithSelector(IEncoder.NotSenderHub.selector));
-            assertEq(encoder.nonces(chainId), 0);
+            assertEq(encoder.messageId(), 0);
         }
     }
 }

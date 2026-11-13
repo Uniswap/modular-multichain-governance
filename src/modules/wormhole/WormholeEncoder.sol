@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.37;
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {Call} from "src/types/Call.sol";
@@ -12,12 +11,7 @@ import {MultichainAction} from "src/types/MultichainAction.sol";
 /// @dev While Wormhole defines their own custom chain Id's, we can avoid this complication by
 ///      simply encoding the target chain's EIP-155 chain Id into the payload to be checked on the
 ///      remote chain's Decoder module.
-contract WormholeEncoder is IEncoder, Owned(msg.sender) {
-    /// @notice Logged when nonce for a chain is set (emergency ONLY).
-    /// @param chainId Chain Id that had its nonce overwritten.
-    /// @param nonce New nonce set.
-    event EmergencySetNonce(uint256 indexed chainId, uint32 indexed nonce);
-
+contract WormholeEncoder is IEncoder {
     /// @notice Wormhole-defined "Consistency Level".
     /// @dev We set to `1`, which means "Finalized on Ethereum".
     uint8 public constant CONSISTENCY_LEVEL = 1;
@@ -28,30 +22,18 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
     /// @notice Sender Hub on Ethereum.
     address public immutable SENDER_HUB;
 
-    /// @notice Maps chain Id's to nonces.
-    /// @dev Tracking nonces per-chain enables strict sequencing for the Wormhole Decoders.
-    mapping(uint256 chainId => uint256) public nonces;
+    /// @notice Id of the most recently sent message.
+    /// @dev A single counter is shared across all chains, so every message Id is globally unique.
+    uint256 public messageId;
 
     constructor(address wormhole, address senderHub) {
         WORMHOLE = wormhole;
         SENDER_HUB = senderHub;
     }
 
-    /// @notice Sets the nonce for a given chain Id directly.
-    /// @dev EMERGENCY-USE ONLY.
-    /// @dev This is to handle the case where a Wormhole message is dropped and the nonces otherwise
-    ///      would not match.
-    /// @param chainId Chain Id.
-    /// @param nonce Nonce to set.
-    function emergencySetNonce(uint256 chainId, uint32 nonce) public onlyOwner {
-        nonces[chainId] = nonce;
-
-        emit EmergencySetNonce(chainId, nonce);
-    }
-
     /// @notice Encodes a multichain action for the Wormhole core.
     /// @dev The local Wormhole core is the same for all remote networks.
-    /// @dev The payload contains the chain Id as well as the calls to make.
+    /// @dev The payload contains the message Id, the chain Id, and the calls to make.
     /// @dev The receiver hub argument is ignored since a published Wormhole message is not addressed
     ///      to anyone. The Wormhole decoder is responsible for enforcing the correct receiver hub.
     /// @param multichainAction Action to send to the Receiver Hub on the remote chain.
@@ -68,9 +50,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
             require(multichainAction.calls[i].value == 0, InvalidCallValue());
         }
 
-        uint256 nonce = nonces[multichainAction.chainId];
-
-        nonces[multichainAction.chainId] = nonce + 1;
+        uint256 id = ++messageId;
 
         Call[] memory bridgeCalls = new Call[](1);
 
@@ -81,7 +61,7 @@ contract WormholeEncoder is IEncoder, Owned(msg.sender) {
                 IWormhole.publishMessage,
                 (
                     0,
-                    abi.encode(nonce, multichainAction.chainId, multichainAction.calls),
+                    abi.encode(id, multichainAction.chainId, multichainAction.calls),
                     CONSISTENCY_LEVEL
                 )
             )

@@ -21,8 +21,7 @@ struct DecodeInput {
     uint16 emitterChainId;
     uint32 timestamp;
     uint64 sequence;
-    bool nonceMatches;
-    uint256 sentNonce;
+    uint256 messageId;
     bool chainIdMatches;
     uint256 payloadChainId;
     uint256 callCount;
@@ -63,9 +62,6 @@ contract WormholeDecoderFuzzTest is Test {
             emitterChainId = WRONG_WORMHOLE_CHAIN_ID;
         }
 
-        uint256 sentNonce = input.nonceMatches ? 0 : input.sentNonce;
-        if (!input.nonceMatches && sentNonce == 0) sentNonce = 1;
-
         uint256 payloadChainId = input.chainIdMatches ? block.chainid : input.payloadChainId;
         if (!input.chainIdMatches && payloadChainId == block.chainid) {
             payloadChainId = block.chainid ^ 1;
@@ -91,8 +87,6 @@ contract WormholeDecoderFuzzTest is Test {
             expected = abi.encodeWithSelector(WormholeError.NotFromEthereum.selector);
         } else if (uint256(input.timestamp) + MSG_TIMEOUT < block.timestamp) {
             expected = abi.encodeWithSelector(WormholeError.Expired.selector);
-        } else if (sentNonce != 0) {
-            expected = abi.encodeWithSelector(WormholeError.InvalidNonce.selector);
         } else if (payloadChainId != block.chainid) {
             expected = abi.encodeWithSelector(WormholeError.NotToThisChain.selector);
         } else {
@@ -108,7 +102,7 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: emitter,
                 sequence: input.sequence,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(sentNonce, payloadChainId, calls),
+                payload: abi.encode(input.messageId, payloadChainId, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -130,7 +124,6 @@ contract WormholeDecoderFuzzTest is Test {
 
         assertEq(returnData, expected);
         assertEq(success, keccak256(expected) == keccak256(abi.encode(calls)));
-        assertEq(decoder.nonce(), success ? 1 : 0);
     }
 
     function testFuzzDecodeSequenceIgnored(DecodeInput calldata input) public {
@@ -163,7 +156,7 @@ contract WormholeDecoderFuzzTest is Test {
                     sequence: input.sequence,
                     consistencyLevel: CONSISTENCY_LEVEL,
                     payload: abi.encode(
-                        input.nonceMatches ? uint256(0) : input.sentNonce,
+                        input.messageId,
                         input.chainIdMatches ? block.chainid : input.payloadChainId,
                         calls
                     ),
@@ -200,7 +193,7 @@ contract WormholeDecoderFuzzTest is Test {
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
                 payload: abi.encode(
-                    input.nonceMatches ? uint256(0) : input.sentNonce,
+                    input.messageId,
                     input.chainIdMatches ? block.chainid : input.payloadChainId,
                     calls
                 ),
@@ -223,7 +216,6 @@ contract WormholeDecoderFuzzTest is Test {
 
         assertEq(successWith, successWithout);
         assertEq(returnDataHashWith, keccak256(returnDataWithout));
-        assertEq(withSequence.nonce(), withoutSequence.nonce());
     }
 
     function testFuzzDecodeExpiry(uint32 timestamp, uint256 warpTo) public {
@@ -244,7 +236,7 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(uint256(1), block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -262,13 +254,10 @@ contract WormholeDecoderFuzzTest is Test {
             );
 
             assertEq(decoded.length, 0);
-            assertEq(decoder.nonce(), 1);
         } else {
             vm.prank(receiverHub);
             vm.expectRevert(WormholeError.Expired.selector);
             decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-            assertEq(decoder.nonce(), 0);
         }
     }
 
@@ -292,7 +281,7 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), mismatched, new Call[](0)),
+                payload: abi.encode(uint256(1), mismatched, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -305,8 +294,6 @@ contract WormholeDecoderFuzzTest is Test {
         vm.expectRevert(WormholeError.NotToThisChain.selector);
         decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
 
-        assertEq(decoder.nonce(), 0);
-
         wormhole.setParseAndVerifyVM(
             VerifiableMessage({
                 version: VERSION,
@@ -316,7 +303,7 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), blockChainId, new Call[](0)),
+                payload: abi.encode(uint256(1), blockChainId, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -331,46 +318,24 @@ contract WormholeDecoderFuzzTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
-    function testFuzzDecodeNonce(uint256 startNonce, uint256 sentNonce) public {
-        startNonce = bound(startNonce, 0, type(uint256).max - 1);
-
-        uint256 mismatched = sentNonce == startNonce ? sentNonce ^ 1 : sentNonce;
+    function testFuzzDecodeMessageIdNotChecked(
+        uint256 firstMessageId,
+        uint256 secondMessageId,
+        bool repeat,
+        uint256 callCount
+    ) public {
+        if (repeat) secondMessageId = firstMessageId;
 
         address receiverHub = fixedReceiverHub;
         MockWormhole wormhole = new MockWormhole();
         WormholeDecoder decoder = new WormholeDecoder(senderHub, receiverHub, address(wormhole));
 
-        // `nonce` is the only mutable storage variable on the decoder, so it occupies slot 0.
-        vm.store(address(decoder), bytes32(0), bytes32(startNonce));
-
-        assertEq(decoder.nonce(), startNonce);
-
-        wormhole.setParseAndVerifyVM(
-            VerifiableMessage({
-                version: VERSION,
-                timestamp: uint32(block.timestamp),
-                nonce: 0,
-                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                emitterAddress: bytes32(uint256(uint160(senderHub))),
-                sequence: 0,
-                consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(mismatched, block.chainid, new Call[](0)),
-                guardianSetIndex: 0,
-                signatures: new Signature[](0),
-                hash: bytes32(0)
-            }),
-            true,
-            ""
-        );
-
-        vm.prank(receiverHub);
-        vm.expectRevert(WormholeError.InvalidNonce.selector);
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), startNonce);
+        Call[] memory calls = new Call[](bound(callCount, 0, 8));
+        for (uint256 i; i < calls.length; i++) {
+            calls[i] = Call({target: vm.addr(i + 1), value: i, data: abi.encode(i)});
+        }
 
         wormhole.setParseAndVerifyVM(
             VerifiableMessage({
@@ -381,7 +346,7 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(startNonce, block.chainid, new Call[](0)),
+                payload: abi.encode(firstMessageId, block.chainid, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -391,12 +356,35 @@ contract WormholeDecoderFuzzTest is Test {
         );
 
         vm.prank(receiverHub);
-        Call[] memory decoded = decoder.decode(
+        Call[] memory firstDecoded = decoder.decode(
             address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
         );
 
-        assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), startNonce + 1);
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(secondMessageId, block.chainid, calls),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        Call[] memory secondDecoded = decoder.decode(
+            address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
+        );
+
+        assertEq(abi.encode(firstDecoded), abi.encode(calls));
+        assertEq(abi.encode(secondDecoded), abi.encode(calls));
     }
 
     function testFuzzDecodeShortCalldata(bytes calldata data) public {

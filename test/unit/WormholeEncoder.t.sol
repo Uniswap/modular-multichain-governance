@@ -2,7 +2,6 @@
 pragma solidity ^0.8.37;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {WormholeEncoder} from "src/modules/wormhole/WormholeEncoder.sol";
@@ -14,7 +13,6 @@ contract WormholeEncoderTest is Test {
     WormholeEncoder internal encoder;
     MockWormhole internal wormhole;
 
-    address internal admin = vm.addr(1);
     address internal bob = vm.addr(2);
     address internal senderHub = vm.addr(3);
     address internal receiverHub = vm.addr(4);
@@ -31,8 +29,9 @@ contract WormholeEncoderTest is Test {
     uint32 internal constant WORMHOLE_NONCE_FIELD = 0;
     uint8 internal constant CONSISTENCY_LEVEL = 1;
 
-    uint32 internal constant START_NONCE = 7;
-    uint32 internal constant REWOUND_NONCE = 1;
+    uint256 internal constant FIRST_MESSAGE_ID = 1;
+    uint256 internal constant SECOND_MESSAGE_ID = 2;
+    uint256 internal constant THIRD_MESSAGE_ID = 3;
 
     uint256 internal constant MESSAGE_FEE = 0.01 ether;
 
@@ -46,98 +45,22 @@ contract WormholeEncoderTest is Test {
 
     function setUp() public {
         wormhole = new MockWormhole();
-
-        vm.prank(admin);
         encoder = new WormholeEncoder(address(wormhole), senderHub);
     }
 
     function testConstructor() public {
-        vm.expectEmit();
-        emit Owned.OwnershipTransferred(address(0x00), admin);
-
-        vm.prank(admin);
         WormholeEncoder fresh = new WormholeEncoder(address(wormhole), senderHub);
 
         assertEq(fresh.WORMHOLE(), address(wormhole));
         assertEq(fresh.SENDER_HUB(), senderHub);
-        assertEq(fresh.owner(), admin);
         assertEq(fresh.CONSISTENCY_LEVEL(), CONSISTENCY_LEVEL);
-        assertEq(fresh.nonces(CHAIN_ID), 0);
-        assertEq(fresh.nonces(0), 0);
-    }
+        assertEq(fresh.messageId(), 0);
 
-    function testEmergencySetNonce() public {
-        vm.expectEmit(address(encoder));
-        emit WormholeEncoder.EmergencySetNonce(CHAIN_ID, START_NONCE);
+        (bool success, bytes memory returnData) =
+            address(fresh).call(abi.encodeWithSignature("owner()"));
 
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, START_NONCE);
-
-        assertEq(encoder.nonces(CHAIN_ID), START_NONCE);
-    }
-
-    function testEmergencySetNonceZero() public {
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, START_NONCE);
-
-        vm.expectEmit(address(encoder));
-        emit WormholeEncoder.EmergencySetNonce(CHAIN_ID, 0);
-
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, 0);
-
-        assertEq(encoder.nonces(CHAIN_ID), 0);
-    }
-
-    function testEmergencySetNonceMax() public {
-        vm.expectEmit(address(encoder));
-        emit WormholeEncoder.EmergencySetNonce(CHAIN_ID, type(uint32).max);
-
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, type(uint32).max);
-
-        assertEq(encoder.nonces(CHAIN_ID), type(uint32).max);
-    }
-
-    function testEmergencySetNonceNotOwner() public {
-        vm.prank(bob);
-        vm.expectRevert("UNAUTHORIZED");
-        encoder.emergencySetNonce(CHAIN_ID, START_NONCE);
-
-        assertEq(encoder.nonces(CHAIN_ID), 0);
-    }
-
-    function testEmergencySetNonceRewindsPayloadNonce() public {
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
-
-        vm.prank(senderHub);
-        encoder.encode(receiverHub, action);
-
-        vm.prank(senderHub);
-        encoder.encode(receiverHub, action);
-
-        assertEq(encoder.nonces(CHAIN_ID), 2);
-
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, REWOUND_NONCE);
-
-        vm.prank(senderHub);
-        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
-
-        assertEq(
-            bridgeCalls[0].data,
-            abi.encodeCall(
-                IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(REWOUND_NONCE), CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
-            )
-        );
-        assertEq(encoder.nonces(CHAIN_ID), uint256(REWOUND_NONCE) + 1);
+        assertFalse(success);
+        assertEq(returnData.length, 0);
     }
 
     function testEncode() public {
@@ -160,7 +83,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(0), CHAIN_ID, action.calls),
+                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -176,86 +99,88 @@ contract WormholeEncoderTest is Test {
         vm.expectRevert(IEncoder.NotSenderHub.selector);
         encoder.encode(receiverHub, action);
 
-        assertEq(encoder.nonces(CHAIN_ID), 0);
-    }
-
-    function testEncodeCallerNotSenderHubOwner() public {
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
-
-        assertEq(encoder.owner(), admin);
-
-        vm.prank(admin);
-        vm.expectRevert(IEncoder.NotSenderHub.selector);
-        encoder.encode(receiverHub, action);
-
-        assertEq(encoder.nonces(CHAIN_ID), 0);
+        assertEq(encoder.messageId(), 0);
     }
 
     function testEncodeWormholeNonceFieldZero() public {
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, START_NONCE);
-
         MultichainAction memory action;
         action.chainId = CHAIN_ID;
         action.calls = new Call[](0);
-
-        vm.prank(senderHub);
-        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
-
-        assertEq(
-            bridgeCalls[0].data,
-            abi.encodeCall(
-                IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
-            )
-        );
-    }
-
-    function testEncodeNonceInPayload() public {
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, START_NONCE);
-
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
-
-        vm.prank(senderHub);
-        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
-
-        assertEq(
-            bridgeCalls[0].data,
-            abi.encodeCall(
-                IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
-            )
-        );
-        assertEq(encoder.nonces(CHAIN_ID), uint256(START_NONCE) + 1);
-    }
-
-    function testEncodeIncrementsNonce() public {
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
-
-        assertEq(encoder.nonces(CHAIN_ID), 0);
 
         vm.prank(senderHub);
         encoder.encode(receiverHub, action);
 
-        assertEq(encoder.nonces(CHAIN_ID), 1);
+        vm.prank(senderHub);
+        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
+
+        assertEq(
+            bridgeCalls[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (
+                    WORMHOLE_NONCE_FIELD,
+                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
+                    CONSISTENCY_LEVEL
+                )
+            )
+        );
     }
 
-    function testEncodeNoncePerChainIndependent() public {
+    function testEncodeMessageIdInPayload() public {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](0);
+
+        vm.prank(senderHub);
+        Call[] memory firstBridgeCalls = encoder.encode(receiverHub, action);
+
+        vm.prank(senderHub);
+        Call[] memory secondBridgeCalls = encoder.encode(receiverHub, action);
+
+        assertEq(
+            firstBridgeCalls[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (
+                    WORMHOLE_NONCE_FIELD,
+                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
+                    CONSISTENCY_LEVEL
+                )
+            )
+        );
+        assertEq(
+            secondBridgeCalls[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (
+                    WORMHOLE_NONCE_FIELD,
+                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
+                    CONSISTENCY_LEVEL
+                )
+            )
+        );
+        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
+    }
+
+    function testEncodeIncrementsMessageId() public {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](0);
+
+        assertEq(encoder.messageId(), 0);
+
+        vm.prank(senderHub);
+        encoder.encode(receiverHub, action);
+
+        assertEq(encoder.messageId(), FIRST_MESSAGE_ID);
+
+        vm.prank(senderHub);
+        encoder.encode(receiverHub, action);
+
+        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
+    }
+
+    function testEncodeMessageIdSharedAcrossChains() public {
         MultichainAction memory actionA;
         actionA.chainId = CHAIN_ID;
         actionA.calls = new Call[](0);
@@ -270,8 +195,7 @@ contract WormholeEncoderTest is Test {
         vm.prank(senderHub);
         encoder.encode(receiverHub, actionA);
 
-        assertEq(encoder.nonces(CHAIN_ID), 2);
-        assertEq(encoder.nonces(OTHER_CHAIN_ID), 0);
+        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
 
         vm.prank(senderHub);
         Call[] memory bridgeCalls = encoder.encode(receiverHub, actionB);
@@ -282,12 +206,12 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(0), OTHER_CHAIN_ID, actionB.calls),
+                    abi.encode(THIRD_MESSAGE_ID, OTHER_CHAIN_ID, actionB.calls),
                     CONSISTENCY_LEVEL
                 )
             )
         );
-        assertEq(encoder.nonces(OTHER_CHAIN_ID), 1);
+        assertEq(encoder.messageId(), THIRD_MESSAGE_ID);
     }
 
     function testEncodeEmptyCalls() public {
@@ -323,7 +247,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(0), CHAIN_ID, action.calls),
+                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -346,7 +270,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encode(uint256(0), LARGE_CHAIN_ID, action.calls),
+                    abi.encode(FIRST_MESSAGE_ID, LARGE_CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -376,15 +300,33 @@ contract WormholeEncoderTest is Test {
         vm.prank(senderHub);
         Call[] memory withZero = encoder.encode(address(0x00), action);
 
-        vm.prank(admin);
-        encoder.emergencySetNonce(CHAIN_ID, 0);
-
         vm.prank(senderHub);
         Call[] memory withAddress = encoder.encode(otherReceiverHub, action);
 
         assertEq(withZero[0].target, withAddress[0].target);
         assertEq(withZero[0].value, withAddress[0].value);
-        assertEq(withZero[0].data, withAddress[0].data);
+        assertEq(
+            withZero[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (
+                    WORMHOLE_NONCE_FIELD,
+                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
+                    CONSISTENCY_LEVEL
+                )
+            )
+        );
+        assertEq(
+            withAddress[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (
+                    WORMHOLE_NONCE_FIELD,
+                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
+                    CONSISTENCY_LEVEL
+                )
+            )
+        );
     }
 
     function testEncodeInvalidCallValue() public {
@@ -424,7 +366,7 @@ contract WormholeEncoderTest is Test {
         encoder.encode(receiverHub, action);
     }
 
-    function testEncodeInvalidCallValueDoesNotIncrementNonce() public {
+    function testEncodeInvalidCallValueDoesNotIncrementMessageId() public {
         MultichainAction memory action;
         action.chainId = CHAIN_ID;
         action.calls = new Call[](1);
@@ -434,7 +376,7 @@ contract WormholeEncoderTest is Test {
         vm.expectRevert(IEncoder.InvalidCallValue.selector);
         encoder.encode(receiverHub, action);
 
-        assertEq(encoder.nonces(CHAIN_ID), 0);
+        assertEq(encoder.messageId(), 0);
     }
 
     function testEncodeAllZeroCallValues() public {
@@ -451,7 +393,7 @@ contract WormholeEncoderTest is Test {
         Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
 
         assertEq(bridgeCalls[0].value, MESSAGE_FEE);
-        assertEq(encoder.nonces(CHAIN_ID), 1);
+        assertEq(encoder.messageId(), FIRST_MESSAGE_ID);
     }
 
     function testEncodeCheckOrderCallerBeforeCallValue() public {
@@ -466,7 +408,6 @@ contract WormholeEncoderTest is Test {
     }
 
     function testEncodeWormholeNotAContract() public {
-        vm.prank(admin);
         WormholeEncoder eoaWormholeEncoder = new WormholeEncoder(wormholeEoa, senderHub);
 
         MultichainAction memory action;

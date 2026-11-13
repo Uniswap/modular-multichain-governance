@@ -34,8 +34,9 @@ contract WormholeDecoderTest is Test {
     uint16 internal constant WRONG_WORMHOLE_CHAIN_ID = 30;
 
     uint256 internal constant LARGE_CHAIN_ID = 81457;
-    uint256 internal constant WRONG_NONCE = 7;
-    uint256 internal constant NEXT_NONCE = 1;
+    uint256 internal constant MESSAGE_ID = 1;
+    uint256 internal constant NEXT_MESSAGE_ID = 2;
+    uint256 internal constant OTHER_MESSAGE_ID = 7;
     uint256 internal constant DIRTY_BIT_POSITION = 200;
 
     uint256 internal constant FIRST_VALUE = 1 ether;
@@ -63,7 +64,6 @@ contract WormholeDecoderTest is Test {
         assertEq(fresh.SENDER_HUB(), senderHub);
         assertEq(fresh.RECEIVER_HUB(), receiverHub);
         assertEq(fresh.WORMHOLE(), address(wormhole));
-        assertEq(fresh.nonce(), 0);
     }
 
     function testDecode() public {
@@ -79,7 +79,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, calls),
+                payload: abi.encode(MESSAGE_ID, block.chainid, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -97,7 +97,6 @@ contract WormholeDecoderTest is Test {
         assertEq(decoded[0].target, callTargetA);
         assertEq(decoded[0].value, FIRST_VALUE);
         assertEq(decoded[0].data, CALL_DATA);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeEmptyCalls() public {
@@ -110,7 +109,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -125,7 +124,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeMultipleCalls() public {
@@ -143,7 +141,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, calls),
+                payload: abi.encode(MESSAGE_ID, block.chainid, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -181,7 +179,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -202,7 +200,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(NEXT_NONCE, block.chainid, new Call[](0)),
+                payload: abi.encode(NEXT_MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -213,8 +211,6 @@ contract WormholeDecoderTest is Test {
 
         vm.prank(receiverHub);
         decoder.decode(otherReceiverHub, abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 2);
     }
 
     function testDecodeCalldataTooShort() public {
@@ -235,7 +231,6 @@ contract WormholeDecoderTest is Test {
 
         assertFalse(success);
         assertEq(returnData.length, 0);
-        assertEq(decoder.nonce(), 0);
     }
 
     function testDecodeInvalidSelector() public {
@@ -271,7 +266,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -297,7 +292,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(bob))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -323,7 +318,7 @@ contract WormholeDecoderTest is Test {
                 ),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -338,7 +333,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeNotFromEthereum() public {
@@ -351,7 +345,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -375,7 +369,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -401,7 +395,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -418,7 +412,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeFutureTimestamp() public {
@@ -431,7 +424,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -446,7 +439,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeSequenceIgnored() public {
@@ -459,7 +451,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -470,8 +462,6 @@ contract WormholeDecoderTest is Test {
 
         vm.prank(receiverHub);
         decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 1);
 
         wormhole.setParseAndVerifyVM(
             VerifiableMessage({
@@ -482,7 +472,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: type(uint64).max,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(NEXT_NONCE, block.chainid, new Call[](0)),
+                payload: abi.encode(NEXT_MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -493,91 +483,17 @@ contract WormholeDecoderTest is Test {
 
         vm.prank(receiverHub);
         decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 2);
     }
 
-    function testDecodeInvalidNonce() public {
-        wormhole.setParseAndVerifyVM(
-            VerifiableMessage({
-                version: VERSION,
-                timestamp: uint32(block.timestamp),
-                nonce: 0,
-                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                emitterAddress: bytes32(uint256(uint160(senderHub))),
-                sequence: 0,
-                consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(WRONG_NONCE, block.chainid, new Call[](0)),
-                guardianSetIndex: 0,
-                signatures: new Signature[](0),
-                hash: bytes32(0)
-            }),
-            true,
-            ""
-        );
+    function testDecodeMessageIdNotChecked() public {
+        Call[] memory calls = new Call[](1);
+        calls[0] = Call({target: callTargetA, value: 0, data: CALL_DATA});
 
-        vm.prank(receiverHub);
-        vm.expectRevert(WormholeError.InvalidNonce.selector);
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-    }
+        // Zero, repeated, out-of-order and maximal message Id's all decode.
+        uint256[5] memory messageIds =
+            [uint256(0), OTHER_MESSAGE_ID, OTHER_MESSAGE_ID, MESSAGE_ID, type(uint256).max];
 
-    function testDecodeNonceReplay() public {
-        wormhole.setParseAndVerifyVM(
-            VerifiableMessage({
-                version: VERSION,
-                timestamp: uint32(block.timestamp),
-                nonce: 0,
-                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                emitterAddress: bytes32(uint256(uint160(senderHub))),
-                sequence: 0,
-                consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
-                guardianSetIndex: 0,
-                signatures: new Signature[](0),
-                hash: bytes32(0)
-            }),
-            true,
-            ""
-        );
-
-        vm.prank(receiverHub);
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        vm.prank(receiverHub);
-        vm.expectRevert(WormholeError.InvalidNonce.selector);
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 1);
-    }
-
-    function testDecodeNonceOutOfOrder() public {
-        wormhole.setParseAndVerifyVM(
-            VerifiableMessage({
-                version: VERSION,
-                timestamp: uint32(block.timestamp),
-                nonce: 0,
-                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                emitterAddress: bytes32(uint256(uint160(senderHub))),
-                sequence: 0,
-                consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(NEXT_NONCE, block.chainid, new Call[](0)),
-                guardianSetIndex: 0,
-                signatures: new Signature[](0),
-                hash: bytes32(0)
-            }),
-            true,
-            ""
-        );
-
-        assertEq(decoder.nonce(), 0);
-
-        vm.prank(receiverHub);
-        vm.expectRevert(WormholeError.InvalidNonce.selector);
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-    }
-
-    function testDecodeNonceSequential() public {
-        for (uint256 i; i < 3; i++) {
+        for (uint256 i; i < messageIds.length; i++) {
             wormhole.setParseAndVerifyVM(
                 VerifiableMessage({
                     version: VERSION,
@@ -587,7 +503,7 @@ contract WormholeDecoderTest is Test {
                     emitterAddress: bytes32(uint256(uint160(senderHub))),
                     sequence: 0,
                     consistencyLevel: CONSISTENCY_LEVEL,
-                    payload: abi.encode(i, block.chainid, new Call[](0)),
+                    payload: abi.encode(messageIds[i], block.chainid, calls),
                     guardianSetIndex: 0,
                     signatures: new Signature[](0),
                     hash: bytes32(0)
@@ -597,38 +513,15 @@ contract WormholeDecoderTest is Test {
             );
 
             vm.prank(receiverHub);
-            decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+            Call[] memory decoded = decoder.decode(
+                address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
+            );
+
+            assertEq(decoded.length, 1);
+            assertEq(decoded[0].target, callTargetA);
+            assertEq(decoded[0].value, 0);
+            assertEq(decoded[0].data, CALL_DATA);
         }
-
-        assertEq(decoder.nonce(), 3);
-    }
-
-    function testDecodeNonceNotIncrementedOnRevert() public {
-        wormhole.setParseAndVerifyVM(
-            VerifiableMessage({
-                version: VERSION,
-                timestamp: uint32(block.timestamp),
-                nonce: 0,
-                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                emitterAddress: bytes32(uint256(uint160(senderHub))),
-                sequence: 0,
-                consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
-                guardianSetIndex: 0,
-                signatures: new Signature[](0),
-                hash: bytes32(0)
-            }),
-            false,
-            INVALID_REASON
-        );
-
-        vm.prank(receiverHub);
-        vm.expectRevert(
-            abi.encodeWithSelector(WormholeError.ParseVerifyVM.selector, INVALID_REASON)
-        );
-        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 0);
     }
 
     function testDecodeNotToThisChain() public {
@@ -641,7 +534,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid + 1, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid + 1, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -670,7 +563,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), LARGE_CHAIN_ID, calls),
+                payload: abi.encode(MESSAGE_ID, LARGE_CHAIN_ID, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -688,7 +581,6 @@ contract WormholeDecoderTest is Test {
 
         assertEq(decoded.length, 1);
         assertEq(decoded[0].target, callTargetA);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeMalformedPayload() public {
@@ -721,7 +613,6 @@ contract WormholeDecoderTest is Test {
 
         assertFalse(success);
         assertEq(returnData.length, 0);
-        assertEq(decoder.nonce(), 0);
     }
 
     function testDecodeLegacyTwoElementPayload() public {
@@ -748,11 +639,9 @@ contract WormholeDecoderTest is Test {
         vm.prank(receiverHub);
         vm.expectRevert(WormholeError.NotToThisChain.selector);
         decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
-
-        assertEq(decoder.nonce(), 0);
     }
 
-    function testDecodeCheckOrderPayloadBeforeNonce() public {
+    function testDecodePayloadMissingCalls() public {
         wormhole.setParseAndVerifyVM(
             VerifiableMessage({
                 version: VERSION,
@@ -762,7 +651,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(WRONG_NONCE, block.chainid),
+                payload: abi.encode(MESSAGE_ID, block.chainid),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -782,11 +671,6 @@ contract WormholeDecoderTest is Test {
 
         assertFalse(success);
         assertEq(returnData.length, 0);
-        assertTrue(
-            keccak256(returnData)
-                != keccak256(abi.encodeWithSelector(WormholeError.InvalidNonce.selector))
-        );
-        assertEq(decoder.nonce(), 0);
     }
 
     function testDecodeCheckOrder() public {
@@ -799,7 +683,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -827,7 +711,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -842,7 +726,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeConsistencyLevelNotChecked() public {
@@ -855,7 +738,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: UNFINALIZED_CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -870,7 +753,6 @@ contract WormholeDecoderTest is Test {
         );
 
         assertEq(decoded.length, 0);
-        assertEq(decoder.nonce(), 1);
     }
 
     function testDecodeReceiverHubNotChecked() public {
@@ -886,7 +768,7 @@ contract WormholeDecoderTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
                 hash: bytes32(0)
@@ -907,7 +789,5 @@ contract WormholeDecoderTest is Test {
 
         assertEq(decoded.length, 0);
         assertEq(otherDecoded.length, 0);
-        assertEq(decoder.nonce(), 1);
-        assertEq(otherHubDecoder.nonce(), 1);
     }
 }
