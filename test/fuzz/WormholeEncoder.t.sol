@@ -4,7 +4,6 @@ pragma solidity ^0.8.37;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
-import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {WormholeEncoder} from "src/modules/wormhole/WormholeEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
@@ -87,14 +86,7 @@ contract WormholeEncoderFuzzTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    uint32(0),
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(startNonce), chainId, action.calls))
-                    ),
-                    uint8(1)
-                )
+                (uint32(0), abi.encode(uint256(startNonce), chainId, action.calls), uint8(1))
             )
         );
         assertEq(encoder.nonces(chainId), uint256(startNonce) + 1);

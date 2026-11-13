@@ -5,7 +5,6 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {IWormhole} from "src/interfaces/bridges/IWormhole.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
-import {IWormholeCalls} from "src/modules/wormhole/IWormholeCalls.sol";
 import {WormholeEncoder} from "src/modules/wormhole/WormholeEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
@@ -133,10 +132,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(REWOUND_NONCE), CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(REWOUND_NONCE), CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -164,10 +160,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(0), CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(0), CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -217,10 +210,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -244,10 +234,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(START_NONCE), CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -295,10 +282,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(0), OTHER_CHAIN_ID, actionB.calls))
-                    ),
+                    abi.encode(uint256(0), OTHER_CHAIN_ID, actionB.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -339,10 +323,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(0), CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(0), CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
@@ -365,10 +346,7 @@ contract WormholeEncoderTest is Test {
                 IWormhole.publishMessage,
                 (
                     WORMHOLE_NONCE_FIELD,
-                    abi.encodeCall(
-                        IWormholeCalls.wormholeCall,
-                        (abi.encode(uint256(0), LARGE_CHAIN_ID, action.calls))
-                    ),
+                    abi.encode(uint256(0), LARGE_CHAIN_ID, action.calls),
                     CONSISTENCY_LEVEL
                 )
             )
