@@ -124,6 +124,7 @@ contract WormholeDecoderFuzzTest is Test {
 
         assertEq(returnData, expected);
         assertEq(success, keccak256(expected) == keccak256(abi.encode(calls)));
+        assertEq(decoder.consumed(input.messageId), success);
     }
 
     function testFuzzDecodeSequenceIgnored(DecodeInput calldata input) public {
@@ -320,7 +321,7 @@ contract WormholeDecoderFuzzTest is Test {
         assertEq(decoded.length, 0);
     }
 
-    function testFuzzDecodeMessageIdNotChecked(
+    function testFuzzDecodeReplay(
         uint256 firstMessageId,
         uint256 secondMessageId,
         bool repeat,
@@ -378,13 +379,26 @@ contract WormholeDecoderFuzzTest is Test {
             ""
         );
 
-        vm.prank(receiverHub);
-        Call[] memory secondDecoded = decoder.decode(
-            address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
-        );
+        assertTrue(decoder.consumed(firstMessageId));
+
+        if (secondMessageId == firstMessageId) {
+            vm.prank(receiverHub);
+            vm.expectRevert(WormholeError.AlreadyConsumed.selector);
+            decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+        } else {
+            assertFalse(decoder.consumed(secondMessageId));
+
+            vm.prank(receiverHub);
+            Call[] memory secondDecoded = decoder.decode(
+                address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
+            );
+
+            assertEq(abi.encode(secondDecoded), abi.encode(calls));
+        }
 
         assertEq(abi.encode(firstDecoded), abi.encode(calls));
-        assertEq(abi.encode(secondDecoded), abi.encode(calls));
+        assertTrue(decoder.consumed(firstMessageId));
+        assertTrue(decoder.consumed(secondMessageId));
     }
 
     function testFuzzDecodeShortCalldata(bytes calldata data) public {

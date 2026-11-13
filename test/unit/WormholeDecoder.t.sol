@@ -64,6 +64,8 @@ contract WormholeDecoderTest is Test {
         assertEq(fresh.SENDER_HUB(), senderHub);
         assertEq(fresh.RECEIVER_HUB(), receiverHub);
         assertEq(fresh.WORMHOLE(), address(wormhole));
+        assertFalse(fresh.consumed(0));
+        assertFalse(fresh.consumed(MESSAGE_ID));
     }
 
     function testDecode() public {
@@ -97,6 +99,8 @@ contract WormholeDecoderTest is Test {
         assertEq(decoded[0].target, callTargetA);
         assertEq(decoded[0].value, FIRST_VALUE);
         assertEq(decoded[0].data, CALL_DATA);
+        assertTrue(decoder.consumed(MESSAGE_ID));
+        assertFalse(decoder.consumed(NEXT_MESSAGE_ID));
     }
 
     function testDecodeEmptyCalls() public {
@@ -485,43 +489,312 @@ contract WormholeDecoderTest is Test {
         decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
     }
 
-    function testDecodeMessageIdNotChecked() public {
+    function testDecodeReplay() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(MESSAGE_ID));
+
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.AlreadyConsumed.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(MESSAGE_ID));
+    }
+
+    function testDecodeReplayDifferentCalls() public {
         Call[] memory calls = new Call[](1);
         calls[0] = Call({target: callTargetA, value: 0, data: CALL_DATA});
 
-        // Zero, repeated, out-of-order and maximal message Id's all decode.
-        uint256[5] memory messageIds =
-            [uint256(0), OTHER_MESSAGE_ID, OTHER_MESSAGE_ID, MESSAGE_ID, type(uint256).max];
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
 
-        for (uint256 i; i < messageIds.length; i++) {
-            wormhole.setParseAndVerifyVM(
-                VerifiableMessage({
-                    version: VERSION,
-                    timestamp: uint32(block.timestamp),
-                    nonce: 0,
-                    emitterChainId: ETH_WORMHOLE_CHAIN_ID,
-                    emitterAddress: bytes32(uint256(uint160(senderHub))),
-                    sequence: 0,
-                    consistencyLevel: CONSISTENCY_LEVEL,
-                    payload: abi.encode(messageIds[i], block.chainid, calls),
-                    guardianSetIndex: 0,
-                    signatures: new Signature[](0),
-                    hash: bytes32(0)
-                }),
-                true,
-                ""
-            );
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
 
-            vm.prank(receiverHub);
-            Call[] memory decoded = decoder.decode(
-                address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM))
-            );
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, calls),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
 
-            assertEq(decoded.length, 1);
-            assertEq(decoded[0].target, callTargetA);
-            assertEq(decoded[0].value, 0);
-            assertEq(decoded[0].data, CALL_DATA);
-        }
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.AlreadyConsumed.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+    }
+
+    function testDecodeOutOfOrder() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(OTHER_MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(OTHER_MESSAGE_ID));
+        assertFalse(decoder.consumed(MESSAGE_ID));
+
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(OTHER_MESSAGE_ID));
+        assertTrue(decoder.consumed(MESSAGE_ID));
+        assertFalse(decoder.consumed(NEXT_MESSAGE_ID));
+    }
+
+    function testDecodeMessageIdZero() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(uint256(0), block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(0));
+
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.AlreadyConsumed.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+    }
+
+    function testDecodeMessageIdMax() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(type(uint256).max, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(type(uint256).max));
+
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.AlreadyConsumed.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+    }
+
+    function testDecodeNotConsumedOnRevert() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            false,
+            INVALID_REASON
+        );
+
+        vm.prank(receiverHub);
+        vm.expectRevert(
+            abi.encodeWithSelector(WormholeError.ParseVerifyVM.selector, INVALID_REASON)
+        );
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertFalse(decoder.consumed(MESSAGE_ID));
+
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid + 1, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.NotToThisChain.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertFalse(decoder.consumed(MESSAGE_ID));
+
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        assertTrue(decoder.consumed(MESSAGE_ID));
+    }
+
+    function testDecodeCheckOrderChainIdBeforeConsumed() public {
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
+
+        wormhole.setParseAndVerifyVM(
+            VerifiableMessage({
+                version: VERSION,
+                timestamp: uint32(block.timestamp),
+                nonce: 0,
+                emitterChainId: ETH_WORMHOLE_CHAIN_ID,
+                emitterAddress: bytes32(uint256(uint160(senderHub))),
+                sequence: 0,
+                consistencyLevel: CONSISTENCY_LEVEL,
+                payload: abi.encode(MESSAGE_ID, block.chainid + 1, new Call[](0)),
+                guardianSetIndex: 0,
+                signatures: new Signature[](0),
+                hash: bytes32(0)
+            }),
+            true,
+            ""
+        );
+
+        vm.prank(receiverHub);
+        vm.expectRevert(WormholeError.NotToThisChain.selector);
+        decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
     }
 
     function testDecodeNotToThisChain() public {
@@ -789,5 +1062,7 @@ contract WormholeDecoderTest is Test {
 
         assertEq(decoded.length, 0);
         assertEq(otherDecoded.length, 0);
+        assertTrue(decoder.consumed(MESSAGE_ID));
+        assertTrue(otherHubDecoder.consumed(MESSAGE_ID));
     }
 }

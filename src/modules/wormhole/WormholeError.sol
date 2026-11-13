@@ -6,4 +6,5 @@ library WormholeError {
     error NotFromEthereum();
     error Expired();
     error NotToThisChain();
+    error AlreadyConsumed();
 }
