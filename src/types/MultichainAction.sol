@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.37;
+
+import {Call} from "src/types/Call.sol";
+
+/// @dev Array of calls scoped to a chain Id.
+struct MultichainAction {
+    uint256 chainId;
+    Call[] calls;
+}

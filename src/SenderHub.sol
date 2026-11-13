@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.37;
+
+import {Owned} from "lib/solmate/src/auth/Owned.sol";
+import {ISenderHub} from "src/interfaces/ISenderHub.sol";
+import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
+import {Call} from "src/types/Call.sol";
+import {MultichainAction} from "src/types/MultichainAction.sol";
+
+/// @title Sender Hub.
+/// @notice Receives an array of MultichainAction's from governance, dispatches encoders, and sends
+///         multichain actions to bridges based on each action's target chain Id.
+contract SenderHub is Owned(msg.sender), ISenderHub {
+    /// @inheritdoc ISenderHub
+    mapping(uint256 chainId => address) public encoders;
+
+    /// @inheritdoc ISenderHub
+    mapping(uint256 chainId => address) public receiverHubs;
+
+    /// @inheritdoc ISenderHub
+    function setEncoder(uint256 chainId, address encoder) public onlyOwner {
+        encoders[chainId] = encoder;
+
+        emit SetEncoder(chainId, encoder);
+    }
+
+    /// @inheritdoc ISenderHub
+    function setReceiverHub(uint256 chainId, address receiverHub) public onlyOwner {
+        receiverHubs[chainId] = receiverHub;
+
+        emit SetReceiverHub(chainId, receiverHub);
+    }
+
+    /// @inheritdoc ISenderHub
+    function sendMultichainActions(MultichainAction[] calldata actions) public payable onlyOwner {
+        for (uint256 i; i < actions.length; i++) {
+            uint256 chainId = actions[i].chainId;
+            address encoder = encoders[chainId];
+            require(encoder != address(0x00), EncoderNotSet(chainId));
+
+            Call[] memory bridgeCalls = IEncoder(encoder).encode(receiverHubs[chainId], actions[i]);
+
+            // The array may hold more than one bridge call if the encoder is a composite encoder.
+            for (uint256 j; j < bridgeCalls.length; j++) {
+                address bridge = bridgeCalls[j].target;
+
+                (bool success, bytes memory data) =
+                    bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
+
+                require(success, CallFail(bridge, data));
+
+                emit SendMultichainAction(chainId, bridge, encoder);
+            }
+        }
+    }
+}
