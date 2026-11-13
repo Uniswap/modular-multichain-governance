@@ -36,6 +36,7 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
         for (uint256 i; i < actions.length; i++) {
             uint256 chainId = actions[i].chainId;
             address encoder = encoders[chainId];
+            require(encoder != address(0x00), EncoderNotSet(chainId));
 
             Call[] memory bridgeCalls = IEncoder(encoder).encode(receiverHubs[chainId], actions[i]);
 

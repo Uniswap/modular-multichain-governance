@@ -354,11 +354,8 @@ contract SenderHubTest is Test {
         assertEq(senderHub.encoders(CHAIN_ID), address(0x00));
 
         vm.prank(admin);
-        (bool success, bytes memory returnData) =
-            address(senderHub).call(abi.encodeCall(SenderHub.sendMultichainActions, (actions)));
-
-        assertFalse(success);
-        assertEq(returnData.length, 0);
+        vm.expectRevert(abi.encodeWithSelector(ISenderHub.EncoderNotSet.selector, CHAIN_ID));
+        senderHub.sendMultichainActions(actions);
     }
 
     function testSendMultichainActionsReceiverHubNotSet() public {

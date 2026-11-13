@@ -4,6 +4,10 @@ pragma solidity ^0.8.37;
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
 interface ISenderHub {
+    /// @notice Thrown when an encoder is not set for the given chain Id.
+    /// @param chainId The chain Id not matched.
+    error EncoderNotSet(uint256 chainId);
+
     /// @notice Thrown when a bridge call fails.
     /// @param bridge Bridge that threw.
     /// @param revertData Data reverted.
