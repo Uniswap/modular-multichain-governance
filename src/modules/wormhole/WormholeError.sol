@@ -5,7 +5,5 @@ library WormholeError {
     error ParseVerifyVM(string wormholeReason);
     error NotFromEthereum();
     error Expired();
-    error MessageVersion();
-    error NotToReceiverHub();
     error NotToThisChain();
 }
