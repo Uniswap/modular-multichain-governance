@@ -35,7 +35,7 @@ contract WormholeEncoder is IEncoder {
     /// @dev The local Wormhole core is the same for all remote networks.
     /// @dev The payload contains the message Id, the chain Id, and the calls to make.
     /// @dev The receiver hub argument is ignored since a published Wormhole message is not addressed
-    ///      to anyone. The Wormhole decoder is responsible for enforcing the correct receiver hub.
+    ///      to anyone.
     /// @param multichainAction Action to send to the Receiver Hub on the remote chain.
     /// @return Bridge call(s) for SenderHub to make.
     function encode(address, MultichainAction calldata multichainAction)
