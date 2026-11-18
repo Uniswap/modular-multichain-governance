@@ -9,8 +9,15 @@ libs = ["lib"]
 # - 3860: ".. This contract may not be deployable on Mainnet. .." in test/unit/
 ignored_error_codes = [8429, 3860]
 
-# ignoring mocks in coverage checks
-no_match_coverage = "test/mocks/"
+# ignoring mocks and test helpers in coverage checks
+no_match_coverage = "test/(mocks|utils)/"
+
+# fork tests in test/integration/ read these, archive access is needed for the pinned blocks
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+base = "${BASE_RPC_URL}"
+unichain = "${UNICHAIN_RPC_URL}"
 
 [lint]
 exclude_lints = [

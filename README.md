@@ -77,3 +77,38 @@ flowchart LR
 
 ```
 
+## Testing
+
+Tests are split by kind under `test/`:
+
+| Directory           | Contents                                                                 |
+| ------------------- | ------------------------------------------------------------------------ |
+| `test/unit/`        | One file per contract, every function and branch against mocks.          |
+| `test/fuzz/`        | One file per contract, stateless fuzz tests against mocks.               |
+| `test/integration/` | One file per bridge module, fork tests against the deployed bridge.      |
+| `test/mocks/`       | Stand-ins for bridges, modules, and call targets.                        |
+| `test/utils/`       | Shared helpers and interfaces of deployed contracts used by fork tests.  |
+
+Unit and fuzz tests keep their steps inline. Logic that several tests need and that is not itself
+under test (for example, relaying a bridge message from one fork to another) lives in `test/utils/`.
+
+### Integration tests
+
+Integration tests send actions from a `SenderHub` on an Ethereum fork through the real bridge, then
+relay the message to a `ReceiverHub` on a fork of the remote chain. Forks are pinned to block
+numbers, so the RPC endpoints need archive access:
+
+```sh
+export MAINNET_RPC_URL=...
+export OPTIMISM_RPC_URL=...
+export BASE_RPC_URL=...
+export UNICHAIN_RPC_URL=...
+
+forge test
+```
+
+To run without RPC access, skip them:
+
+```sh
+forge test --no-match-path "test/integration/*"
+```
