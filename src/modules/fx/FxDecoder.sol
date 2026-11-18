@@ -24,7 +24,7 @@ contract FxDecoder is IDecoder {
     }
 
     /// @notice Decodes a message from Polygon's FxChild contract.
-    /// @param caller Acount that called the Receiver Hub. MUST be the FxChild.
+    /// @param caller Account that called the Receiver Hub. MUST be the FxChild.
     /// @param data Data encoded in `processMessageFromRoot` from FxChild.
     /// @return Decoded call array.
     function decode(address caller, bytes calldata data) public view returns (Call[] memory) {
