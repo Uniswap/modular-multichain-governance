@@ -48,7 +48,7 @@ interface ISenderHub {
 
     /// @notice Sets receiver hub to chain Id.
     /// @param chainId Chain Id.
-    //// @param receiverHub Receiver hub.
+    /// @param receiverHub Receiver hub.
     function setReceiverHub(uint256 chainId, address receiverHub) external;
 
     /// @notice Sends an array of multichain actions.
