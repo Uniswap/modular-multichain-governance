@@ -5,6 +5,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {IFxRoot} from "src/interfaces/bridges/IFxRoot.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {FxEncoder} from "src/modules/fx/FxEncoder.sol";
+import {FxError} from "src/modules/fx/FxError.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -23,6 +24,18 @@ contract FxEncoderTest is Test {
 
     uint256 internal constant CALL_VALUE = 1 ether;
 
+    uint256 internal constant MAX_STATE_SYNC_SIZE = 30_000;
+
+    // Byte length of the state sync for one call without data, and the longest data that keeps
+    // the state sync for one call within the maximum. State sync lengths are multiples of a word,
+    // the longest that fits is 29,984 bytes.
+    uint256 internal constant EMPTY_CALL_STATE_SYNC_SIZE = 352;
+    uint256 internal constant MAX_CALL_DATA_LENGTH = 29_632;
+
+    // Calls without data, each 160 bytes of a state sync that is 192 bytes without calls, that
+    // fill the largest state sync that fits.
+    uint256 internal constant MAX_EMPTY_CALLS = 186;
+
     bytes internal constant FIRST_DATA = hex"01";
     bytes internal constant SECOND_DATA = hex"0202";
     bytes internal constant THIRD_DATA = hex"03";
@@ -36,6 +49,7 @@ contract FxEncoderTest is Test {
         FxEncoder fresh = new FxEncoder(fxRoot);
 
         assertEq(fresh.FX_ROOT(), fxRoot);
+        assertEq(fresh.MAX_STATE_SYNC_SIZE(), MAX_STATE_SYNC_SIZE);
 
         (bool success, bytes memory returnData) =
             address(fresh).call(abi.encodeWithSignature("owner()"));
@@ -161,6 +175,91 @@ contract FxEncoderTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(IFxRoot.sendMessageToChild, (receiverHub, abi.encode(action.calls)))
         );
+    }
+
+    function testEncodeDataAtMaximum() public view {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](1);
+        action.calls[0] =
+            Call({target: callTargetA, value: 0, data: new bytes(MAX_CALL_DATA_LENGTH)});
+
+        bytes memory stateSync = abi.encode(address(this), receiverHub, abi.encode(action.calls));
+
+        assertEq(stateSync.length, EMPTY_CALL_STATE_SYNC_SIZE + MAX_CALL_DATA_LENGTH);
+        assertLe(stateSync.length, MAX_STATE_SYNC_SIZE);
+        assertGt(stateSync.length + 32, MAX_STATE_SYNC_SIZE);
+
+        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
+
+        assertEq(
+            bridgeCalls[0].data,
+            abi.encodeCall(IFxRoot.sendMessageToChild, (receiverHub, abi.encode(action.calls)))
+        );
+    }
+
+    function testEncodeDataTooLarge() public {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](1);
+        action.calls[0] =
+            Call({target: callTargetA, value: 0, data: new bytes(MAX_CALL_DATA_LENGTH + 1)});
+
+        bytes memory stateSync = abi.encode(address(this), receiverHub, abi.encode(action.calls));
+
+        assertEq(stateSync.length, EMPTY_CALL_STATE_SYNC_SIZE + MAX_CALL_DATA_LENGTH + 32);
+        assertGt(stateSync.length, MAX_STATE_SYNC_SIZE);
+
+        vm.expectRevert(FxError.StateSyncTooLarge.selector);
+        encoder.encode(receiverHub, action);
+    }
+
+    function testEncodeCallsAtMaximum() public view {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](MAX_EMPTY_CALLS);
+        for (uint256 i; i < MAX_EMPTY_CALLS; i++) {
+            action.calls[i] = Call({target: callTargetA, value: 0, data: ""});
+        }
+
+        bytes memory stateSync = abi.encode(address(this), receiverHub, abi.encode(action.calls));
+
+        assertLe(stateSync.length, MAX_STATE_SYNC_SIZE);
+
+        Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
+
+        assertEq(
+            bridgeCalls[0].data,
+            abi.encodeCall(IFxRoot.sendMessageToChild, (receiverHub, abi.encode(action.calls)))
+        );
+    }
+
+    function testEncodeCallsTooLarge() public {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](MAX_EMPTY_CALLS + 1);
+        for (uint256 i; i < MAX_EMPTY_CALLS + 1; i++) {
+            action.calls[i] = Call({target: callTargetA, value: 0, data: ""});
+        }
+
+        bytes memory stateSync = abi.encode(address(this), receiverHub, abi.encode(action.calls));
+
+        assertGt(stateSync.length, MAX_STATE_SYNC_SIZE);
+
+        vm.expectRevert(FxError.StateSyncTooLarge.selector);
+        encoder.encode(receiverHub, action);
+    }
+
+    function testEncodeDataTooLargeCheckOrder() public {
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](1);
+        action.calls[0] = Call({
+            target: callTargetA, value: CALL_VALUE, data: new bytes(MAX_CALL_DATA_LENGTH + 1)
+        });
+
+        vm.expectRevert(IEncoder.InvalidCallValue.selector);
+        encoder.encode(receiverHub, action);
     }
 
     function testEncodeChainIdIgnored() public view {

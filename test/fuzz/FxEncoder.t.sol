@@ -5,6 +5,7 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {IFxRoot} from "src/interfaces/bridges/IFxRoot.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
 import {FxEncoder} from "src/modules/fx/FxEncoder.sol";
+import {FxError} from "src/modules/fx/FxError.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
@@ -13,6 +14,8 @@ contract FxEncoderFuzzTest is Test {
     address internal fixedReceiverHub = vm.addr(101);
 
     uint256 internal constant CHAIN_ID = 137;
+
+    uint256 internal constant MAX_STATE_SYNC_SIZE = 30_000;
 
     function testFuzzEncode(address receiverHub, uint256 chainId, uint256 callCount) public {
         if (receiverHub == address(0x00)) receiverHub = fixedReceiverHub;
@@ -37,6 +40,43 @@ contract FxEncoderFuzzTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(IFxRoot.sendMessageToChild, (receiverHub, abi.encode(action.calls)))
         );
+    }
+
+    function testFuzzEncodeStateSyncSize(uint256 callCount, uint256 dataLength) public {
+        callCount = bound(callCount, 1, 8);
+        dataLength = bound(dataLength, 0, 8000);
+
+        FxEncoder encoder = new FxEncoder(fxRoot);
+
+        MultichainAction memory action;
+        action.chainId = CHAIN_ID;
+        action.calls = new Call[](callCount);
+        for (uint256 i; i < callCount; i++) {
+            action.calls[i] = Call({target: vm.addr(i + 1), value: 0, data: new bytes(dataLength)});
+        }
+
+        // The state sync is 192 bytes without calls, and each call adds 160 bytes and its data,
+        // padded to a word.
+        uint256 stateSyncSize = 192 + (callCount * (160 + ((dataLength + 31) / 32) * 32));
+
+        assertEq(
+            abi.encode(address(this), fixedReceiverHub, abi.encode(action.calls)).length,
+            stateSyncSize
+        );
+
+        if (stateSyncSize > MAX_STATE_SYNC_SIZE) {
+            vm.expectRevert(FxError.StateSyncTooLarge.selector);
+            encoder.encode(fixedReceiverHub, action);
+        } else {
+            Call[] memory bridgeCalls = encoder.encode(fixedReceiverHub, action);
+
+            assertEq(
+                bridgeCalls[0].data,
+                abi.encodeCall(
+                    IFxRoot.sendMessageToChild, (fixedReceiverHub, abi.encode(action.calls))
+                )
+            );
+        }
     }
 
     function testFuzzEncodeInvalidCallValue(uint256 callCount, uint256 badIndex, uint256 badValue)
