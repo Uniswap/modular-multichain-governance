@@ -13,7 +13,7 @@ interface IEncoder {
     error InvalidCallValue();
 
     /// @notice Thrown when a bridge is not set.
-    /// @dev This handles encoders tracks the bridge address in storage and the address is unset.
+    /// @dev This handles the case where a bridge address is not set on an encoder.
     error BridgeNotSet();
 
     /// @notice Thrown when the caller is not the sender hub.
