@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.37;
 
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IDecoder} from "src/interfaces/modules/IDecoder.sol";
-import {Call} from "src/types/Call.sol";
-
 interface IReceiverHub {
     /// @notice Thrown when a decoder is not set for the given selector.
     /// @param selector The selector not matched.
