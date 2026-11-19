@@ -16,7 +16,7 @@ import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 import {MockTarget} from "test/mocks/MockTarget.sol";
 import {IOptimismPortal2} from "test/utils/IOptimismPortal2.sol";
-import {IUniswapV3Factory} from "test/utils/IUniswapV3Factory.sol";
+import {IPoolManager} from "test/utils/IPoolManager.sol";
 import {OpStackRelayer} from "test/utils/OpStackRelayer.sol";
 
 // Fork blocks are pinned so runs are reproducible and RPC responses are cached. Bump them together
@@ -26,17 +26,17 @@ uint256 constant MAINNET_BLOCK = 26_444_000;
 uint256 constant OPTIMISM_CHAIN_ID = 10;
 uint256 constant OPTIMISM_BLOCK = 159_715_000;
 address constant OPTIMISM_PORTAL = 0xbEb5Fc579115071764c7423A4f12eDde41f106Ed;
-address constant OPTIMISM_V3_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+address constant OPTIMISM_POOL_MANAGER = 0x9a13F98Cb987694C9F086b1F5eB990EeA8264Ec3;
 
 uint256 constant BASE_CHAIN_ID = 8453;
 uint256 constant BASE_BLOCK = 59_201_000;
 address constant BASE_PORTAL = 0x49048044D57e1C92A77f79988d21Fa8fAF74E97e;
-address constant BASE_V3_FACTORY = 0x33128a8fC17869897dcE68Ed026d694621f6FDfD;
+address constant BASE_POOL_MANAGER = 0x498581fF718922c3f8e6A244956aF099B2652b2b;
 
 uint256 constant UNICHAIN_CHAIN_ID = 130;
 uint256 constant UNICHAIN_BLOCK = 64_281_000;
 address constant UNICHAIN_PORTAL = 0x0bd48f6B86a26D3a217d0Fa6FfE2B491B956A7a2;
-address constant UNICHAIN_V3_FACTORY = 0x1F98400000000000000000000000000000000003;
+address constant UNICHAIN_POOL_MANAGER = 0x1F98400000000000000000000000000000000004;
 
 /// @notice Sends multichain actions from a SenderHub on an Ethereum fork through the real
 ///         OptimismPortal2 of one OP Stack chain, then relays the deposit to a ReceiverHub on a
@@ -55,11 +55,12 @@ abstract contract Portal2IntegrationTest is Test {
     uint256 internal immutable L2_CHAIN_ID;
     uint256 internal immutable L2_BLOCK;
     address internal immutable PORTAL;
-    address internal immutable V3_FACTORY;
+    address internal immutable POOL_MANAGER;
 
     address internal admin = makeAddr("admin");
     address internal remoteAdmin = makeAddr("remoteAdmin");
     address internal bob = makeAddr("bob");
+    address internal protocolFeeController = makeAddr("protocolFeeController");
 
     address internal aliasedSenderHub;
 
@@ -75,9 +76,6 @@ abstract contract Portal2IntegrationTest is Test {
     uint256 internal constant FIRST_VALUE = 1 ether;
     uint256 internal constant SECOND_VALUE = 2 ether;
 
-    uint24 internal constant NEW_FEE = 250;
-    int24 internal constant NEW_TICK_SPACING = 5;
-
     bytes internal constant CALL_DATA = hex"dead";
     bytes internal constant FIRST_DATA = hex"01";
     bytes internal constant SECOND_DATA = hex"0202";
@@ -88,13 +86,13 @@ abstract contract Portal2IntegrationTest is Test {
         uint256 chainId,
         uint256 blockNumber,
         address portal,
-        address v3Factory
+        address poolManager
     ) {
         l2RpcAlias = rpcAlias;
         L2_CHAIN_ID = chainId;
         L2_BLOCK = blockNumber;
         PORTAL = portal;
-        V3_FACTORY = v3Factory;
+        POOL_MANAGER = poolManager;
     }
 
     function setUp() public {
@@ -255,22 +253,22 @@ abstract contract Portal2IntegrationTest is Test {
     }
 
     function testSendProtocolCall() public {
-        IUniswapV3Factory factory = IUniswapV3Factory(V3_FACTORY);
+        IPoolManager poolManager = IPoolManager(POOL_MANAGER);
 
         vm.selectFork(l2Fork);
 
-        vm.prank(factory.owner());
-        factory.setOwner(address(receiverHub));
+        vm.prank(poolManager.owner());
+        poolManager.transferOwnership(address(receiverHub));
 
-        assertEq(factory.feeAmountTickSpacing(NEW_FEE), 0);
+        assertNotEq(poolManager.protocolFeeController(), protocolFeeController);
 
         vm.selectFork(l1Fork);
 
         Call[] memory calls = new Call[](1);
         calls[0] = Call({
-            target: V3_FACTORY,
+            target: POOL_MANAGER,
             value: 0,
-            data: abi.encodeCall(IUniswapV3Factory.enableFeeAmount, (NEW_FEE, NEW_TICK_SPACING))
+            data: abi.encodeCall(IPoolManager.setProtocolFeeController, (protocolFeeController))
         });
 
         MultichainAction[] memory actions = new MultichainAction[](1);
@@ -291,7 +289,7 @@ abstract contract Portal2IntegrationTest is Test {
         (bool success,) = OpStackRelayer.relay(deposits[0]);
 
         assertTrue(success);
-        assertEq(factory.feeAmountTickSpacing(NEW_FEE), NEW_TICK_SPACING);
+        assertEq(poolManager.protocolFeeController(), protocolFeeController);
     }
 
     function testRelayFromOtherL1Contract() public {
@@ -540,17 +538,17 @@ abstract contract Portal2IntegrationTest is Test {
 
 contract Portal2OptimismTest is
     Portal2IntegrationTest(
-        "optimism", OPTIMISM_CHAIN_ID, OPTIMISM_BLOCK, OPTIMISM_PORTAL, OPTIMISM_V3_FACTORY
+        "optimism", OPTIMISM_CHAIN_ID, OPTIMISM_BLOCK, OPTIMISM_PORTAL, OPTIMISM_POOL_MANAGER
     )
 {}
 
 contract Portal2BaseTest is
-    Portal2IntegrationTest("base", BASE_CHAIN_ID, BASE_BLOCK, BASE_PORTAL, BASE_V3_FACTORY)
+    Portal2IntegrationTest("base", BASE_CHAIN_ID, BASE_BLOCK, BASE_PORTAL, BASE_POOL_MANAGER)
 {}
 
 contract Portal2UnichainTest is
     Portal2IntegrationTest(
-        "unichain", UNICHAIN_CHAIN_ID, UNICHAIN_BLOCK, UNICHAIN_PORTAL, UNICHAIN_V3_FACTORY
+        "unichain", UNICHAIN_CHAIN_ID, UNICHAIN_BLOCK, UNICHAIN_PORTAL, UNICHAIN_POOL_MANAGER
     )
 {}
 
