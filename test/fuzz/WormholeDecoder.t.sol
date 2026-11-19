@@ -21,7 +21,7 @@ struct DecodeInput {
     uint16 emitterChainId;
     uint32 timestamp;
     uint64 sequence;
-    uint256 messageId;
+    bytes32 messageHash;
     bool chainIdMatches;
     uint256 payloadChainId;
     uint256 callCount;
@@ -41,6 +41,7 @@ contract WormholeDecoderFuzzTest is Test {
 
     string internal constant INVALID_REASON = "bad sig";
     bytes internal constant ENCODED_VM = hex"deadbeef";
+    bytes32 internal constant MESSAGE_HASH = keccak256("message");
 
     function testFuzzDecode(DecodeInput calldata input) public {
         vm.assume(
@@ -102,10 +103,10 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: emitter,
                 sequence: input.sequence,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(input.messageId, payloadChainId, calls),
+                payload: abi.encode(payloadChainId, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: input.messageHash
             }),
             input.valid,
             INVALID_REASON
@@ -124,7 +125,7 @@ contract WormholeDecoderFuzzTest is Test {
 
         assertEq(returnData, expected);
         assertEq(success, keccak256(expected) == keccak256(abi.encode(calls)));
-        assertEq(decoder.consumed(input.messageId), success);
+        assertEq(decoder.consumed(input.messageHash), success);
     }
 
     function testFuzzDecodeSequenceIgnored(DecodeInput calldata input) public {
@@ -157,13 +158,11 @@ contract WormholeDecoderFuzzTest is Test {
                     sequence: input.sequence,
                     consistencyLevel: CONSISTENCY_LEVEL,
                     payload: abi.encode(
-                        input.messageId,
-                        input.chainIdMatches ? block.chainid : input.payloadChainId,
-                        calls
+                        input.chainIdMatches ? block.chainid : input.payloadChainId, calls
                     ),
                     guardianSetIndex: 0,
                     signatures: new Signature[](0),
-                    hash: bytes32(0)
+                    hash: input.messageHash
                 }),
                 input.valid,
                 INVALID_REASON
@@ -194,13 +193,11 @@ contract WormholeDecoderFuzzTest is Test {
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
                 payload: abi.encode(
-                    input.messageId,
-                    input.chainIdMatches ? block.chainid : input.payloadChainId,
-                    calls
+                    input.chainIdMatches ? block.chainid : input.payloadChainId, calls
                 ),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: input.messageHash
             }),
             input.valid,
             INVALID_REASON
@@ -237,10 +234,10 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(1), block.chainid, new Call[](0)),
+                payload: abi.encode(block.chainid, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: MESSAGE_HASH
             }),
             true,
             ""
@@ -282,10 +279,10 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(1), mismatched, new Call[](0)),
+                payload: abi.encode(mismatched, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: MESSAGE_HASH
             }),
             true,
             ""
@@ -304,10 +301,10 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(uint256(1), blockChainId, new Call[](0)),
+                payload: abi.encode(blockChainId, new Call[](0)),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: MESSAGE_HASH
             }),
             true,
             ""
@@ -322,12 +319,12 @@ contract WormholeDecoderFuzzTest is Test {
     }
 
     function testFuzzDecodeReplay(
-        uint256 firstMessageId,
-        uint256 secondMessageId,
+        bytes32 firstHash,
+        bytes32 secondHash,
         bool repeat,
         uint256 callCount
     ) public {
-        if (repeat) secondMessageId = firstMessageId;
+        if (repeat) secondHash = firstHash;
 
         address receiverHub = fixedReceiverHub;
         MockWormhole wormhole = new MockWormhole();
@@ -347,10 +344,10 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(firstMessageId, block.chainid, calls),
+                payload: abi.encode(block.chainid, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: firstHash
             }),
             true,
             ""
@@ -370,23 +367,23 @@ contract WormholeDecoderFuzzTest is Test {
                 emitterAddress: bytes32(uint256(uint160(senderHub))),
                 sequence: 0,
                 consistencyLevel: CONSISTENCY_LEVEL,
-                payload: abi.encode(secondMessageId, block.chainid, calls),
+                payload: abi.encode(block.chainid, calls),
                 guardianSetIndex: 0,
                 signatures: new Signature[](0),
-                hash: bytes32(0)
+                hash: secondHash
             }),
             true,
             ""
         );
 
-        assertTrue(decoder.consumed(firstMessageId));
+        assertTrue(decoder.consumed(firstHash));
 
-        if (secondMessageId == firstMessageId) {
+        if (secondHash == firstHash) {
             vm.prank(receiverHub);
             vm.expectRevert(WormholeError.AlreadyConsumed.selector);
             decoder.decode(address(0x00), abi.encodeCall(IWormholeCalls.wormholeCall, (ENCODED_VM)));
         } else {
-            assertFalse(decoder.consumed(secondMessageId));
+            assertFalse(decoder.consumed(secondHash));
 
             vm.prank(receiverHub);
             Call[] memory secondDecoded = decoder.decode(
@@ -397,8 +394,8 @@ contract WormholeDecoderFuzzTest is Test {
         }
 
         assertEq(abi.encode(firstDecoded), abi.encode(calls));
-        assertTrue(decoder.consumed(firstMessageId));
-        assertTrue(decoder.consumed(secondMessageId));
+        assertTrue(decoder.consumed(firstHash));
+        assertTrue(decoder.consumed(secondHash));
     }
 
     function testFuzzDecodeShortCalldata(bytes calldata data) public {
