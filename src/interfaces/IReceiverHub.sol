@@ -38,7 +38,7 @@ interface IReceiverHub {
     /// @return Decoder module.
     function decoders(bytes4 selector) external view returns (address);
 
-    /// @notice Sets whether an interface is supported.
+    /// @notice Returns whether an interface is supported.
     /// @param interfaceId Interface ID to set.
     /// @return True if the interface is supported.
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
