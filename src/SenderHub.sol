@@ -43,11 +43,12 @@ contract SenderHub is Owned(msg.sender), ISenderHub {
             // The array may hold more than one bridge call if the encoder is a composite encoder.
             for (uint256 j; j < bridgeCalls.length; j++) {
                 address bridge = bridgeCalls[j].target;
+                uint256 value = bridgeCalls[j].value;
+                bytes memory data = bridgeCalls[j].data;
 
-                (bool success, bytes memory data) =
-                    bridge.call{value: bridgeCalls[j].value}(bridgeCalls[j].data);
+                (bool success, bytes memory returnedData) = bridge.call{value: value}(data);
 
-                require(success, CallFail(bridge, data));
+                require(success, CallFail(bridge, returnedData));
 
                 emit SendMultichainAction(chainId, bridge, encoder);
             }
