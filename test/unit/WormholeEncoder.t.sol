@@ -29,10 +29,6 @@ contract WormholeEncoderTest is Test {
     uint32 internal constant WORMHOLE_NONCE_FIELD = 0;
     uint8 internal constant CONSISTENCY_LEVEL = 1;
 
-    uint256 internal constant FIRST_MESSAGE_ID = 1;
-    uint256 internal constant SECOND_MESSAGE_ID = 2;
-    uint256 internal constant THIRD_MESSAGE_ID = 3;
-
     uint256 internal constant MESSAGE_FEE = 0.01 ether;
 
     uint256 internal constant FIRST_VALUE = 1 ether;
@@ -54,7 +50,6 @@ contract WormholeEncoderTest is Test {
         assertEq(fresh.WORMHOLE(), address(wormhole));
         assertEq(fresh.SENDER_HUB(), senderHub);
         assertEq(fresh.CONSISTENCY_LEVEL(), CONSISTENCY_LEVEL);
-        assertEq(fresh.messageId(), 0);
 
         (bool success, bytes memory returnData) =
             address(fresh).call(abi.encodeWithSignature("owner()"));
@@ -81,11 +76,7 @@ contract WormholeEncoderTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
     }
@@ -98,8 +89,6 @@ contract WormholeEncoderTest is Test {
         vm.prank(bob);
         vm.expectRevert(IEncoder.NotSenderHub.selector);
         encoder.encode(receiverHub, action);
-
-        assertEq(encoder.messageId(), 0);
     }
 
     function testEncodeWormholeNonceFieldZero() public {
@@ -117,19 +106,16 @@ contract WormholeEncoderTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
     }
 
-    function testEncodeMessageIdInPayload() public {
+    function testEncodeDeterministic() public {
         MultichainAction memory action;
         action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
+        action.calls = new Call[](1);
+        action.calls[0] = Call({target: callTargetA, value: 0, data: CALL_DATA});
 
         vm.prank(senderHub);
         Call[] memory firstBridgeCalls = encoder.encode(receiverHub, action);
@@ -137,50 +123,12 @@ contract WormholeEncoderTest is Test {
         vm.prank(senderHub);
         Call[] memory secondBridgeCalls = encoder.encode(receiverHub, action);
 
-        assertEq(
-            firstBridgeCalls[0].data,
-            abi.encodeCall(
-                IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
-            )
-        );
-        assertEq(
-            secondBridgeCalls[0].data,
-            abi.encodeCall(
-                IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
-            )
-        );
-        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
+        assertEq(firstBridgeCalls[0].target, secondBridgeCalls[0].target);
+        assertEq(firstBridgeCalls[0].value, secondBridgeCalls[0].value);
+        assertEq(firstBridgeCalls[0].data, secondBridgeCalls[0].data);
     }
 
-    function testEncodeIncrementsMessageId() public {
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](0);
-
-        assertEq(encoder.messageId(), 0);
-
-        vm.prank(senderHub);
-        encoder.encode(receiverHub, action);
-
-        assertEq(encoder.messageId(), FIRST_MESSAGE_ID);
-
-        vm.prank(senderHub);
-        encoder.encode(receiverHub, action);
-
-        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
-    }
-
-    function testEncodeMessageIdSharedAcrossChains() public {
+    function testEncodeChainIdInPayload() public {
         MultichainAction memory actionA;
         actionA.chainId = CHAIN_ID;
         actionA.calls = new Call[](0);
@@ -190,28 +138,25 @@ contract WormholeEncoderTest is Test {
         actionB.calls = new Call[](0);
 
         vm.prank(senderHub);
-        encoder.encode(receiverHub, actionA);
+        Call[] memory bridgeCallsA = encoder.encode(receiverHub, actionA);
 
         vm.prank(senderHub);
-        encoder.encode(receiverHub, actionA);
-
-        assertEq(encoder.messageId(), SECOND_MESSAGE_ID);
-
-        vm.prank(senderHub);
-        Call[] memory bridgeCalls = encoder.encode(receiverHub, actionB);
+        Call[] memory bridgeCallsB = encoder.encode(receiverHub, actionB);
 
         assertEq(
-            bridgeCalls[0].data,
+            bridgeCallsA[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(THIRD_MESSAGE_ID, OTHER_CHAIN_ID, actionB.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, actionA.calls), CONSISTENCY_LEVEL)
             )
         );
-        assertEq(encoder.messageId(), THIRD_MESSAGE_ID);
+        assertEq(
+            bridgeCallsB[0].data,
+            abi.encodeCall(
+                IWormhole.publishMessage,
+                (WORMHOLE_NONCE_FIELD, abi.encode(OTHER_CHAIN_ID, actionB.calls), CONSISTENCY_LEVEL)
+            )
+        );
     }
 
     function testEncodeEmptyCalls() public {
@@ -245,11 +190,7 @@ contract WormholeEncoderTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
     }
@@ -268,11 +209,7 @@ contract WormholeEncoderTest is Test {
             bridgeCalls[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(FIRST_MESSAGE_ID, LARGE_CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(LARGE_CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
     }
@@ -309,22 +246,14 @@ contract WormholeEncoderTest is Test {
             withZero[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(FIRST_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
         assertEq(
             withAddress[0].data,
             abi.encodeCall(
                 IWormhole.publishMessage,
-                (
-                    WORMHOLE_NONCE_FIELD,
-                    abi.encode(SECOND_MESSAGE_ID, CHAIN_ID, action.calls),
-                    CONSISTENCY_LEVEL
-                )
+                (WORMHOLE_NONCE_FIELD, abi.encode(CHAIN_ID, action.calls), CONSISTENCY_LEVEL)
             )
         );
     }
@@ -366,19 +295,6 @@ contract WormholeEncoderTest is Test {
         encoder.encode(receiverHub, action);
     }
 
-    function testEncodeInvalidCallValueDoesNotIncrementMessageId() public {
-        MultichainAction memory action;
-        action.chainId = CHAIN_ID;
-        action.calls = new Call[](1);
-        action.calls[0] = Call({target: callTargetA, value: FIRST_VALUE, data: CALL_DATA});
-
-        vm.prank(senderHub);
-        vm.expectRevert(IEncoder.InvalidCallValue.selector);
-        encoder.encode(receiverHub, action);
-
-        assertEq(encoder.messageId(), 0);
-    }
-
     function testEncodeAllZeroCallValues() public {
         wormhole.setMessageFee(MESSAGE_FEE);
 
@@ -393,7 +309,6 @@ contract WormholeEncoderTest is Test {
         Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
 
         assertEq(bridgeCalls[0].value, MESSAGE_FEE);
-        assertEq(encoder.messageId(), FIRST_MESSAGE_ID);
     }
 
     function testEncodeCheckOrderCallerBeforeCallValue() public {

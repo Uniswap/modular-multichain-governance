@@ -25,10 +25,12 @@ contract WormholeDecoder is IDecoder {
     /// @notice Wormhole core on local chain.
     address public immutable WORMHOLE;
 
-    /// @notice Maps message Id's to whether they have been consumed on this chain.
-    /// @dev Message Id's are shared across all chains, so the Id's consumed here are not contiguous
-    ///      and messages may be relayed in any order.
-    mapping(uint256 messageId => bool) public consumed;
+    /// @notice Maps Verifiable Message hashes to whether they have been consumed on this chain.
+    /// @dev The Wormhole core computes the hash over the message body, which includes the emitter
+    ///      and its sequence number, so every published message has a distinct hash. The guardian
+    ///      signatures are not part of the hash, so re-signing a message does not change it.
+    /// @dev Messages may be relayed in any order.
+    mapping(bytes32 hash => bool) public consumed;
 
     constructor(address senderHub, address receiverHub, address wormhole) {
         SENDER_HUB = senderHub;
@@ -41,7 +43,7 @@ contract WormholeDecoder is IDecoder {
     /// @dev Verification and message format is checked by Wormhole core.
     /// @dev `vm.emitterChainId` refers to the Wormhole-defined "chainId" system, which is separate
     ///      from the EIP-155 chain Id. The `receiverChainId` refers to the EIP-155 chain Id.
-    /// @dev Each message Id is consumed at most once, so a Verifiable Message cannot be replayed.
+    /// @dev Each hash is consumed at most once, so a Verifiable Message cannot be replayed.
     /// @param data Encoded `wormholeCall` function.
     /// @return Decoded call array.
     function decode(address, bytes calldata data) public returns (Call[] memory) {
@@ -62,12 +64,11 @@ contract WormholeDecoder is IDecoder {
         require(vm.emitterChainId == ETH_WORMHOLE_CHAIN_ID, WormholeError.NotFromEthereum());
         require(vm.timestamp + MSG_TIMEOUT >= block.timestamp, WormholeError.Expired());
 
-        (uint256 messageId, uint256 receiverChainId, Call[] memory calls) =
-            abi.decode(vm.payload, (uint256, uint256, Call[]));
+        (uint256 receiverChainId, Call[] memory calls) = abi.decode(vm.payload, (uint256, Call[]));
         require(receiverChainId == block.chainid, WormholeError.NotToThisChain());
-        require(!consumed[messageId], WormholeError.AlreadyConsumed());
+        require(!consumed[vm.hash], WormholeError.AlreadyConsumed());
 
-        consumed[messageId] = true;
+        consumed[vm.hash] = true;
 
         return calls;
     }
