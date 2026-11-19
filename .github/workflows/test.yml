@@ -41,3 +41,4 @@ jobs:
           OPTIMISM_RPC_URL: ${{ secrets.OPTIMISM_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           UNICHAIN_RPC_URL: ${{ secrets.UNICHAIN_RPC_URL }}
+          ARBITRUM_RPC_URL: ${{ secrets.ARBITRUM_RPC_URL }}
