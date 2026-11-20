@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.37;
 
-/// @notice Subset of the deployed OptimismPortal2 used by the fork tests, beyond what the modules
-///         themselves depend on (see `src/interfaces/bridges/IPortal2.sol`).
+/// @notice Subset of the deployed OptimismPortal2 used by the fork tests. The modules do not call
+///         the portal, the L1CrossDomainMessenger deposits on it for them.
 interface IOptimismPortal2 {
-    /// @notice Thrown when the deposit's gas limit is below `minimumGasLimit` for its calldata.
-    error OptimismPortal_GasLimitTooLow();
-
     /// @notice Thrown when the deposit's calldata is larger than 120,000 bytes.
     error OptimismPortal_CalldataTooLarge();
 
@@ -22,7 +19,4 @@ interface IOptimismPortal2 {
     event TransactionDeposited(
         address indexed from, address indexed to, uint256 indexed version, bytes opaqueData
     );
-
-    /// @notice Lowest gas limit the portal accepts for a deposit with `byteCount` of calldata.
-    function minimumGasLimit(uint64 byteCount) external pure returns (uint64);
 }

@@ -2,52 +2,27 @@
 pragma solidity ^0.8.37;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {IPortal2} from "src/interfaces/bridges/IPortal2.sol";
+import {ICrossDomainMessenger} from "src/interfaces/bridges/ICrossDomainMessenger.sol";
 import {IEncoder} from "src/interfaces/modules/IEncoder.sol";
-import {IPortal2Calls} from "src/modules/optimism-portal2/IPortal2Calls.sol";
-import {Portal2Encoder} from "src/modules/optimism-portal2/Portal2Encoder.sol";
+import {
+    ICrossDomainMessengerCalls
+} from "src/modules/optimism-messenger/ICrossDomainMessengerCalls.sol";
+import {
+    L1CrossDomainMessengerEncoder
+} from "src/modules/optimism-messenger/L1CrossDomainMessengerEncoder.sol";
 import {Call} from "src/types/Call.sol";
 import {MultichainAction} from "src/types/MultichainAction.sol";
 
-contract Portal2EncoderFuzzTest is Test {
+contract L1CrossDomainMessengerEncoderFuzzTest is Test {
     address internal admin = vm.addr(100);
     address internal fixedReceiverHub = vm.addr(101);
-    address internal fixedPortal = vm.addr(102);
+    address internal fixedMessenger = vm.addr(102);
 
-    function testFuzzSetGasLimit(address owner, address caller, bool callerIsOwner, uint64 gasLimit)
-        public
-    {
-        if (callerIsOwner) caller = owner;
-        else if (caller == owner) caller = address(uint160(caller) ^ 1);
-
-        vm.assume(owner != VM_ADDRESS && caller != VM_ADDRESS);
-
-        vm.prank(owner);
-        Portal2Encoder encoder = new Portal2Encoder();
-
-        if (caller == owner) {
-            vm.expectEmit(address(encoder));
-            emit Portal2Encoder.SetGasLimit(gasLimit);
-
-            vm.prank(caller);
-            encoder.setGasLimit(gasLimit);
-
-            assertEq(encoder.gasLimit(), gasLimit);
-        } else {
-            vm.prank(caller);
-            vm.expectRevert("UNAUTHORIZED");
-            encoder.setGasLimit(gasLimit);
-
-            assertEq(encoder.gasLimit(), 0);
-        }
-    }
-
-    function testFuzzSetPortal(
+    function testFuzzSetMinGasLimit(
         address owner,
         address caller,
         bool callerIsOwner,
-        uint256 chainId,
-        address portal
+        uint32 minGasLimit
     ) public {
         if (callerIsOwner) caller = owner;
         else if (caller == owner) caller = address(uint160(caller) ^ 1);
@@ -55,43 +30,75 @@ contract Portal2EncoderFuzzTest is Test {
         vm.assume(owner != VM_ADDRESS && caller != VM_ADDRESS);
 
         vm.prank(owner);
-        Portal2Encoder encoder = new Portal2Encoder();
+        L1CrossDomainMessengerEncoder encoder = new L1CrossDomainMessengerEncoder();
 
         if (caller == owner) {
             vm.expectEmit(address(encoder));
-            emit Portal2Encoder.SetPortal(chainId, portal);
+            emit L1CrossDomainMessengerEncoder.SetMinGasLimit(minGasLimit);
 
             vm.prank(caller);
-            encoder.setPortal(chainId, portal);
+            encoder.setMinGasLimit(minGasLimit);
 
-            assertEq(encoder.portals(chainId), portal);
+            assertEq(encoder.minGasLimit(), minGasLimit);
         } else {
             vm.prank(caller);
             vm.expectRevert("UNAUTHORIZED");
-            encoder.setPortal(chainId, portal);
+            encoder.setMinGasLimit(minGasLimit);
 
-            assertEq(encoder.portals(chainId), address(0x00));
+            assertEq(encoder.minGasLimit(), 0);
+        }
+    }
+
+    function testFuzzSetMessenger(
+        address owner,
+        address caller,
+        bool callerIsOwner,
+        uint256 chainId,
+        address messenger
+    ) public {
+        if (callerIsOwner) caller = owner;
+        else if (caller == owner) caller = address(uint160(caller) ^ 1);
+
+        vm.assume(owner != VM_ADDRESS && caller != VM_ADDRESS);
+
+        vm.prank(owner);
+        L1CrossDomainMessengerEncoder encoder = new L1CrossDomainMessengerEncoder();
+
+        if (caller == owner) {
+            vm.expectEmit(address(encoder));
+            emit L1CrossDomainMessengerEncoder.SetMessenger(chainId, messenger);
+
+            vm.prank(caller);
+            encoder.setMessenger(chainId, messenger);
+
+            assertEq(encoder.messengers(chainId), messenger);
+        } else {
+            vm.prank(caller);
+            vm.expectRevert("UNAUTHORIZED");
+            encoder.setMessenger(chainId, messenger);
+
+            assertEq(encoder.messengers(chainId), address(0x00));
         }
     }
 
     function testFuzzEncode(
         address receiverHub,
         uint256 chainId,
-        address portal,
-        uint64 gasLimit,
+        address messenger,
+        uint32 minGasLimit,
         uint256[8] calldata callValues
     ) public {
         if (receiverHub == address(0x00)) receiverHub = fixedReceiverHub;
-        if (portal == address(0x00)) portal = fixedPortal;
+        if (messenger == address(0x00)) messenger = fixedMessenger;
 
         vm.prank(admin);
-        Portal2Encoder encoder = new Portal2Encoder();
+        L1CrossDomainMessengerEncoder encoder = new L1CrossDomainMessengerEncoder();
 
         vm.prank(admin);
-        encoder.setPortal(chainId, portal);
+        encoder.setMessenger(chainId, messenger);
 
         vm.prank(admin);
-        encoder.setGasLimit(gasLimit);
+        encoder.setMinGasLimit(minGasLimit);
 
         MultichainAction memory action;
         action.chainId = chainId;
@@ -107,18 +114,18 @@ contract Portal2EncoderFuzzTest is Test {
         Call[] memory bridgeCalls = encoder.encode(receiverHub, action);
 
         assertEq(bridgeCalls.length, 1);
-        assertEq(bridgeCalls[0].target, portal);
+        assertEq(bridgeCalls[0].target, messenger);
         assertEq(bridgeCalls[0].value, value);
         assertEq(
             bridgeCalls[0].data,
             abi.encodeCall(
-                IPortal2.depositTransaction,
+                ICrossDomainMessenger.sendMessage,
                 (
                     receiverHub,
-                    value,
-                    gasLimit,
-                    false,
-                    abi.encodeCall(IPortal2Calls.portal2Call, (action.calls))
+                    abi.encodeCall(
+                        ICrossDomainMessengerCalls.crossDomainMessengerCall, (action.calls)
+                    ),
+                    minGasLimit
                 )
             )
         );
@@ -128,7 +135,7 @@ contract Portal2EncoderFuzzTest is Test {
         callCount = bound(callCount, 0, 8);
 
         vm.prank(admin);
-        Portal2Encoder encoder = new Portal2Encoder();
+        L1CrossDomainMessengerEncoder encoder = new L1CrossDomainMessengerEncoder();
 
         MultichainAction memory action;
         action.chainId = chainId;
@@ -149,7 +156,7 @@ contract Portal2EncoderFuzzTest is Test {
         callCount = bound(callCount, 0, 8);
 
         vm.prank(admin);
-        Portal2Encoder encoder = new Portal2Encoder();
+        L1CrossDomainMessengerEncoder encoder = new L1CrossDomainMessengerEncoder();
 
         MultichainAction memory action;
         action.chainId = chainId;
@@ -158,7 +165,7 @@ contract Portal2EncoderFuzzTest is Test {
             action.calls[i] = Call({target: vm.addr(i + 1), value: i, data: abi.encode(i)});
         }
 
-        assertEq(encoder.portals(chainId), address(0x00));
+        assertEq(encoder.messengers(chainId), address(0x00));
 
         vm.expectRevert(IEncoder.BridgeNotSet.selector);
         encoder.encode(receiverHub, action);
